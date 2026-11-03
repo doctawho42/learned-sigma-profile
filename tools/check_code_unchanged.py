@@ -50,6 +50,10 @@ CHANGED_HERE = {
         "removed, together with the constant naming that path; nothing in this repository "
         "supplies the file, and the journal style the figure needs is applied by "
         "scripts/analysis/acs_figure_style.py in the same place",
+    "tests/test_manuscript_numbers_bind.py":
+        "a module-level skip was added, because the manuscript sources this file reads are "
+        "added to this repository when the article is submitted; see paper/README.md. Without "
+        "the guard the module fails to import rather than saying why it cannot run",
     "tests/test_sigma_bin_weights_hook.py":
         "the retired gate-1 test and its path constant were removed; the test read "
         "results/per_bin_sensitivity_weights/weight_points_at_error.json, a deposit "

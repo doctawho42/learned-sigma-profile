@@ -36,6 +36,10 @@ python scripts/analysis/read_t1_closure_error_attribution.py
 [MANIFEST.md](MANIFEST.md) maps each item in the manuscript to the script that produces it and the
 file that script reads. Start there to reproduce one number rather than all of them.
 
+The LaTeX sources of the article and its Supporting Information are added when the article is
+submitted. One test and one check read them and skip with their reason printed until then;
+[paper/README.md](paper/README.md) says which, and everything else runs.
+
 ## Layout
 
 ```

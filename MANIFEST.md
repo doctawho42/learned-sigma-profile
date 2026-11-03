@@ -78,7 +78,7 @@ manifest recording the commit, the configuration, the seed and the environment; 
 
 | Test | What it pins |
 |---|---|
-| `test_manuscript_numbers_bind.py` | every number in the article text, and the Supporting Information's sweep figures, against the deposit each is read from |
+| `test_manuscript_numbers_bind.py` | every number in the article text, and the Supporting Information's sweep figures, against the deposit each is read from. Skips until the manuscript sources are added; see `paper/README.md` |
 | `test_t2_gates_bind.py` | the pre-declared reading of the pedestal and substitution measurements |
 | `test_sigma_bin_weights_hook.py` | the per-bin weighting of the σ-profile loss, and the attribution gate |
 | `test_sigma_arm_switches.py` | that the two configuration switches change what they claim to change, and nothing when off |

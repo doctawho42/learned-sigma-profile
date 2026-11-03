@@ -36,6 +36,14 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 PAPER = ROOT / "paper"
+
+# The manuscript sources are added to this repository when the article is submitted; see
+# paper/README.md. Until then this file has no text to bind the deposits to, and it says so
+# rather than passing vacuously.
+if not (PAPER / "sections/results-v2.tex").exists():
+    pytest.skip("the manuscript sources are not in this repository yet; see paper/README.md",
+                allow_module_level=True)
+
 RESULTS = (PAPER / "sections/results-v2.tex").read_text(encoding="utf8")
 TABLE = (PAPER / "sections/tab-battery.tex").read_text(encoding="utf8")
 SI = (PAPER / "sections/si-v2.tex").read_text(encoding="utf8")

@@ -12,6 +12,7 @@ four declared classes:
     present   it is in this repository, and the script checks that it is
     external  it arrives from the archived data or checkpoints, named per entry
     written   a script here creates it at run time, and that script is named per entry
+    later     it arrives when the article is submitted, and its consumer skips until then
     unused    a configuration default for a feature this manuscript does not exercise
 
 An undeclared path fails. A declared path that no longer appears fails as stale, so the
@@ -64,6 +65,17 @@ WRITTEN = {
     "results/toc_graphic": "scripts/analysis/make_toc_figure_v2.py",
 }
 
+#: Paths that arrive when the article is submitted; see paper/README.md. Each consumer of one
+#: of these skips with its reason printed while the file is absent, rather than passing
+#: vacuously, and this table is what keeps that list short and visible.
+LATER = {
+    "paper/learned_sigma_profile.tex": "the article, added at submission",
+    "paper/sections": "the article's section sources, added at submission",
+    "paper/sections/si-v2.tex": "the Supporting Information body, added at submission",
+    "paper/sections/tab-battery.tex":
+        "generated into the article's sources by scripts/analysis/make_battery_table_tex.py",
+}
+
 #: Configuration defaults for features this manuscript does not exercise. They are read
 #: only when the corresponding option is switched on, which none of the runs of record do.
 UNUSED = {
@@ -101,7 +113,7 @@ def main() -> int:
 
     refs = referenced()
     problems: list[str] = []
-    counts = {"present": 0, "external": 0, "written": 0, "unused": 0}
+    counts = {"present": 0, "external": 0, "written": 0, "unused": 0, "later": 0}
     rows: list[tuple[str, str, str]] = []
 
     for path in sorted(refs):
@@ -110,7 +122,7 @@ def main() -> int:
         here = ROOT / path
         in_pkg = here.is_file() or (here.is_dir() and any(here.iterdir()))
         declared = [c for c, tbl in (("external", EXTERNAL), ("written", WRITTEN),
-                                     ("unused", UNUSED)) if path in tbl]
+                                     ("unused", UNUSED), ("later", LATER)) if path in tbl]
         if len(declared) > 1:
             problems.append(f"{path}: declared in more than one table ({', '.join(declared)})")
             continue
@@ -124,14 +136,16 @@ def main() -> int:
             continue
         cls = declared[0]
         counts[cls] += 1
-        note = {"external": EXTERNAL, "written": WRITTEN, "unused": UNUSED}[cls][path]
+        note = {"external": EXTERNAL, "written": WRITTEN, "unused": UNUSED,
+                "later": LATER}[cls][path]
         rows.append((cls, path, note))
         if cls == "written" and not (ROOT / note).exists():
             problems.append(f"{path}: declared as written by {note}, which is not here")
         if cls == "external" and in_pkg:
             problems.append(f"{path}: declared external but present; move it out of EXTERNAL")
 
-    for tbl_name, tbl in (("EXTERNAL", EXTERNAL), ("WRITTEN", WRITTEN), ("UNUSED", UNUSED)):
+    for tbl_name, tbl in (("EXTERNAL", EXTERNAL), ("WRITTEN", WRITTEN), ("UNUSED", UNUSED),
+                          ("LATER", LATER)):
         for stale in sorted(set(tbl) - set(refs)):
             problems.append(f"{stale}: declared in {tbl_name} but nothing reads it; "
                             "remove the stale entry")

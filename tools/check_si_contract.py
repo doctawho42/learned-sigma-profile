@@ -67,6 +67,11 @@ def main() -> int:
     ap.add_argument("--verbose", action="store_true", help="print the matched pairs")
     a = ap.parse_args()
 
+    if not (ARTICLE.exists() and SI_BODY.exists()):
+        print("the manuscript sources are not in this repository yet, so the contract cannot "
+              "be checked; see paper/README.md")
+        return 0
+
     promises, sections = article_promises(), si_sections()
     problems: list[str] = []
 
