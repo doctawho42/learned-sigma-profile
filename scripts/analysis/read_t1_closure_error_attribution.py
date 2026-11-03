@@ -107,7 +107,7 @@ def main() -> int:
     w = np.asarray(json.loads(WEIGHTS.read_text(encoding="utf8"))
                    ["by_rows"][a.weight_vector]["w_seed_mean"], float)
     q1, q2 = np.quantile(w, 1 / 3), np.quantile(w, 2 / 3)
-    thirds = {"дорогая": w >= q2, "средняя": (w > q1) & (w < q2), "дешёвая": w <= q1}
+    thirds = {"expensive": w >= q2, "middle": (w > q1) & (w < q2), "cheap": w <= q1}
     for nm, b in thirds.items():
         print(f"  треть {nm}: {int(b.sum())} бинов, вес {w[b].min():.3f}...{w[b].max():.3f}")
 
@@ -123,7 +123,7 @@ def main() -> int:
     dep = json.loads(DEPOSIT.read_text(encoding="utf8"))["arms"]["learned"]["per_seed"]
 
     rng = np.random.default_rng(a.seed)
-    null_sets = [rng.permutation(n_bins)[:int(thirds["дорогая"].sum())] for _ in range(a.n_null)]
+    null_sets = [rng.permutation(n_bins)[:int(thirds["expensive"].sum())] for _ in range(a.n_null)]
     res: dict = {"n_records": int(len(d)), "n_bins": n_bins, "weight_vector": a.weight_vector,
                  "thirds_n_bins": {k: int(v.sum()) for k, v in thirds.items()},
                  "n_null": a.n_null, "per_seed": {}}
@@ -180,7 +180,7 @@ def main() -> int:
         nr = np.asarray(row["null_recovered"])
         print(f"  НУЛЬ (случайная треть, {a.n_null} розыгрышей): возвращено "
               f"{100 * nr.mean():+.1f}% в среднем, разброс {100 * nr.min():+.1f}...{100 * nr.max():+.1f}%")
-        p = float((nr >= row["recovered_дорогая"]).mean())
+        p = float((nr >= row["recovered_expensive"]).mean())
         row["p_expensive_vs_null"] = p
         print(f"  дорогая треть против нуля: p = {p:.3f}")
         res["per_seed"][str(s)] = row

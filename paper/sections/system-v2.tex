@@ -1,0 +1,78 @@
+\section{The system under study}
+\label{sec:system}
+
+\subsection{The relation being closed}
+
+The solubility of a crystalline solid in a liquid follows from a balance between two quantities.
+Breaking the crystal costs an amount set by the melting temperature $T_m$ and the enthalpy of
+fusion $\Delta H_{\mathrm{fus}}$; mixing the freed molecules into the solvent is governed by the
+activity coefficient $\gamma_2$ of the solute in that solvent. For an ideal solution the two
+combine into the mole fraction at saturation,
+%
+\begin{equation}
+\ln x_2 \;=\; -\,\Phi(T) \;-\; \ln \gamma_2 ,
+\qquad
+\Phi(T) \;=\; \frac{\Delta H_{\mathrm{fus}}}{R}\!\left(\frac{1}{T} - \frac{1}{T_m}\right),
+\label{eq:sle}
+\end{equation}
+%
+with $R$ the gas constant. The first term is the crystal contribution and carries no information
+about the solvent; the second is where the chemistry of the mixture enters. Because $\gamma_2$
+itself depends on $x_2$, equation~\eqref{eq:sle} is solved rather than evaluated.
+
+COSMO-SAC \cite{lin2002} supplies $\gamma_2$. It represents each molecule by its $\sigma$-profile:
+the area of the molecular cavity surface carrying screening-charge density $\sigma$, discretised
+onto a fixed grid of $51$ bins spanning roughly $\pm 0.025\,e\,\mathrm{\AA}^{-2}$. A molecule's
+identity enters the model through this vector and through the total cavity area; nothing else about
+the compound is used. Segments exchange with a common pool, and a self-consistent calculation
+returns a segment activity coefficient for each bin, from which the molecular activity coefficient
+follows. The exchange energy contains a term that switches on only for segments beyond a threshold
+$\sigma_{\mathrm{hb}}$ in magnitude, which is how the model represents hydrogen bonding; a segment
+qualifies by its charge density alone, with no reference to which atom carries it. That threshold
+divides the charge-density axis into a core and two outer windows, and the division recurs
+throughout what follows.
+
+\subsection{The network that supplies the profile}
+
+A graph neural network reads the solute and the solvent and produces, for each, a $\sigma$-profile
+and a cavity area; these are passed to the COSMO-SAC calculation and to the solver for
+equation~\eqref{eq:sle}. A second head predicts the crystal properties $T_m$ and
+$\Delta H_{\mathrm{fus}}$ that enter $\Phi(T)$. The profile head is a feed-forward network on the per-molecule representation, ending in a normalised, non-negative vector of $51$ bins. The same head serves both roles, but reads a role-dependent representation, so a compound receives one profile as solute and another as solvent.
+
+The head is trained in two ways at once, and this is the property that makes the pipeline suitable
+for the present question. It is supervised directly against tabulated reference profiles, as a
+predictor of those profiles would be. It is also trained through the thermodynamic relation, so
+the gradient of the solubility loss reaches it. The nearest prior model instead supervises its
+profile predictor externally and then freezes it, so that no gradient from the phase-equilibrium
+data reaches the intermediate \cite{yang2025tennet}. The pipeline studied here therefore occupies
+the position where both influences act, which is where their relative effect can be read.
+
+\subsection{Reference profiles, data and arms}
+
+Reference $\sigma$-profiles are taken from the VT-2005 tabulation \cite{mullins2006}, computed by
+quantum chemistry with a continuum solvation treatment. Throughout, ``reference'' means a value
+from that table, and departures are measured against it. How far the tabulation itself depends on
+the underlying electronic structure method is a separate question \cite{salih2025sigma} and is not
+at issue here, since every comparison in this work uses one table.
+
+Solubility data are drawn from a curated compilation of measured solid solubilities
+\cite{krasnov2025bigsoldb}, split so that no scaffold \cite{bemis1996} appears in both training and
+test sets, which is the harder of the two standard settings and the one relevant to new compounds.
+Infinite-dilution activity coefficients used to score the closure directly come from an independent
+compilation. All results below are reported over five training seeds; the arms differ only in the
+seed, so the spread across them is the natural scale against which any effect must be read.
+Architectural details, hyperparameters, the construction of the splits and the auxiliary
+supervision streams are given in the Supporting Information.
+
+\subsection{How the measurements are read}
+
+Each measurement in Section~\ref{sec:results} is a contrast, and each is reported against a control
+chosen so that it would fire if the instrument responded to something other than the intended
+effect. Where a quantity is compared with a reference table, the control is the same quantity
+computed on profiles that carry the same total area but no chemistry. Where part of a profile is
+replaced, the control is a part of the same size chosen at random. Where an effect is attributed to
+training, the control is an untrained network of the same architecture. The reading rule for each
+measurement, together with the result that would refute it, was fixed before the measurement was
+made; the rules and their outcomes are listed in the Supporting Information. Table~\ref{tab:battery}
+collects every test with the control beside it, because a result of this kind is not interpretable
+without one.

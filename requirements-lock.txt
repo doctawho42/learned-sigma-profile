@@ -1,0 +1,13 @@
+# The exact versions the deposited results under results/ were computed with.
+# See environment.md for the platform, and for the separate environment the checkpoints
+# were trained in.
+torch==2.6.0
+torch-geometric==2.4.0
+numpy==1.26.4
+pandas==2.2.2
+scipy==1.10.1
+scikit-learn==1.7.2
+matplotlib==3.9.2
+rdkit==2022.9.5
+PyYAML==6.0.3
+pytest==9.0.3

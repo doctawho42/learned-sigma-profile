@@ -1,0 +1,206 @@
+% =====================================================================
+% SHARED PREAMBLE, \input by BOTH documents of this submission:
+%   grounding_paradox.tex      the article                (manuscript=article)
+%   grounding_paradox_si.tex   the Supporting Information (manuscript=suppinfo)
+% Split out on 2026-08-02, when the Supporting Information became its own file at
+% the request of all three referees and because ACS deposits it as a separate one.
+% Everything here was the article's own preamble before the split and is unchanged
+% apart from the xr-hyper line; the point of the file is that the two documents
+% cannot drift apart -- a macro added for one is defined for both.
+% What is NOT here, because it differs between the two: \documentclass (the
+% manuscript type), the title/author/abstract block, \abbreviations, \keywords,
+% \externaldocument (each document names the other), and the Supporting
+% Information's S-numbering.
+% =====================================================================
+\SectionNumbersOn
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{array}
+\usepackage{booktabs}
+% Ragged-right paragraph column. Narrow justified p-columns in the claim and
+% decomposition tables stretched a two-word line across the whole column; L{} sets the
+% same text without the stretch, which is what let the column widths be rebalanced
+% against actual content instead of against the worst justified line.
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\usepackage{graphicx}
+\usepackage{xcolor}
+% ---------------------------------------------------------------------
+% CROSS-DOCUMENT REFERENCES. The article and the Supporting Information are two
+% separate documents, so neither LaTeX run can see the other's \label{}s. xr-hyper
+% reads the other document's .aux and makes its labels resolve to the ordinary
+% \ref, so not one of the 234 references that cross the boundary had to be rewritten
+% as a hand-maintained plain-text pointer. The Supporting Information numbers itself
+% S1, S2, ... (sections, tables, figures, equations, lemmas), so a resolved number
+% says by itself which of the two documents it is in.
+% xr-hyper, NOT xr: under hyperref \newlabel carries five arguments and plain xr
+% reads the wrong one. It has to be loaded BEFORE hyperref, which is the only reason
+% this line sits here and not beside \externaldocument.
+% BUILD ORDER follows from it: the first pass of either document writes the .aux the
+% other one reads, so from a clean directory it is xelatex on both, bibtex on both,
+% then xelatex on both twice more. Building only one of the two from clean leaves
+% its cross-document references as `??', and LaTeX reports that as a warning, not an
+% error -- check the log for "There were undefined references", do not trust the
+% exit status alone.
+% ---------------------------------------------------------------------
+\usepackage{xr-hyper}
+% hidelinks: without it hyperref's default pdfborder={0 0 1} draws a rectangle around every
+% cross-reference and citation. The boxes are invisible on screen in some viewers but print,
+% and ACS production receives the PDF as-is.
+\usepackage[hidelinks]{hyperref}
+
+% ---------------------------------------------------------------------
+% FLOAT PLACEMENT. In the two-column measure a deferred `table*'/`figure*' blocks every
+% starred float after it, and stock LaTeX flushes that queue only at \clearpage -- which
+% here is \end{document}. Left alone, every float from Table 2 onward printed after the
+% bibliography, tens of pages from the text that cites it. dblfloatfix repairs the ordering
+% and lets a double float reach the bottom of a column; the fractions below let a tall
+% starred float be a top float instead of being sent to a float page. The starred floats that sit
+% at that height limit additionally carry `p' in their own placement specifiers, so a float page is
+% available to them and the queue never backs up; the note at each of them says so. Give a new tall
+% `table*'/`figure*' the same `p'. Do NOT name those floats by number here: the numbering has moved
+% twice as tables crossed between the two documents, and a stale number in this comment sends the
+% next reader to the wrong float. Do NOT force the queue out with \afterpage{\clearpage} before Sec. 6.5
+% or before the Discussion: in two-column mode that fires at a column boundary rather than a
+% page boundary, so it ends the page with the right-hand column empty -- a blank half page
+% before the Discussion -- and it buys no placement that `p' does not.
+% Do not tighten these back without checking where the floats land.
+% ---------------------------------------------------------------------
+\usepackage{dblfloatfix}
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\dbltopfraction}{0.92}
+\renewcommand{\bottomfraction}{0.6}
+\renewcommand{\textfraction}{0.06}
+\renewcommand{\floatpagefraction}{0.6}
+\renewcommand{\dblfloatpagefraction}{0.6}
+\setcounter{topnumber}{3}
+\setcounter{dbltopnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{5}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\newtheorem{assumption}{Assumption}
+\newtheorem{definition}{Definition}
+% `remark' added 2026-08-11: Prop. 1 was demoted to a remark (its two clauses are
+% rearrangements of the definitions above them), and amsthm needs the environment to exist in both
+% documents.  Numbered in its own series, so no Lemma/Theorem number moves.
+\newtheorem{remark}{Remark}
+
+% amsthm sets the optional argument of `proof' as a \trivlist label, i.e. one unbreakable
+% \hbox. Four of the SI proof headers are longer than the two-column measure and ran into the
+% neighbouring column. This redefinition is amsthm's own, with the head moved out of the label
+% and into the paragraph so it wraps; \pushQED/\popQED and the spacing are unchanged.
+\makeatletter
+\renewenvironment{proof}[1][\proofname]{\par
+  \pushQED{\qed}%
+  \normalfont \topsep6\p@\@plus6\p@\relax
+  \trivlist
+  \item[]\hskip\labelsep{\itshape #1\@addpunct{.}}\enspace\ignorespaces
+}{\popQED\endtrivlist\@endpefalse}
+\makeatother
+
+% ---------------------------------------------------------------------
+% ACS-style lettered table footnotes. \tnk{a} sets the superscript key in the row or
+% column head it qualifies; \tabnotes{...} sets the note block directly under the
+% \bottomrule. THIS IS THE DESTINATION FOR CAPTION MATERIAL. A caption says what the
+% table shows; anything that qualifies one row, one column or one cell is keyed to it
+% here instead of being appended to the caption. Budget: <=40 words for a table
+% caption, <=60 for a figure caption. Captions on this manuscript have been cut twice
+% and grown back twice because each repair pass appended a sentence; if a finding
+% needs an answer, put the answer in a note, in the body, or in the SI, and leave the
+% caption alone.
+% ---------------------------------------------------------------------
+\newcommand{\tnk}[1]{\textsuperscript{\textit{#1}}}
+\newcommand{\tabnotes}[1]{\par\vspace{2.5pt}\begingroup\footnotesize
+  \setlength{\parindent}{0pt}\raggedright #1\par\endgroup}
+
+% achemso sets the corresponding author's address with \url, which hyperref turns into a URI
+% action with no scheme -- a viewer resolves "nikitapol@fbb.msu.ru" as a relative URL and the
+% one external link in the PDF does not open a mail client. This is the class's own
+% \acs@email@list@aux with \url replaced by an \href{mailto:...}; nothing else changes, and the
+% printed form (\nolinkurl, in the class's \UrlFont) is identical.
+\makeatletter
+\newcommand*\acs@mailto[1]{\href{mailto:#1}{\nolinkurl{#1}}}
+\renewcommand*\acs@email@list@aux{%
+  \advance\@tempcnta\@ne\relax
+  \ifnum\@tempcnta>\acs@author@cnt\relax\else
+    \acs@ifundefined{@email@\@roman\@tempcnta}{}{%
+      \advance\@tempcntb\@ne\relax
+      \ifnum\@tempcntb>\@ne\relax
+        ;
+      \fi
+      \expandafter\expandafter\expandafter\acs@mailto\expandafter
+        \expandafter\expandafter{%
+           \csname @email@\@roman\@tempcnta\endcsname
+      }%
+    }%
+    \expandafter\acs@email@list@aux
+  \fi
+}
+\makeatother
+
+% ---------------------------------------------------------------------
+% \pending marks a value that cannot be filled until submission. It used to set its argument in
+% red bracketed monospace, which printed three conspicuous placeholders in a PDF otherwise ready to
+% read. It now sets the argument as ordinary running text, so each sentence reads as a finished
+% sentence and says in plain words when the value arrives; the MACRO ITSELF is the source marker,
+% so `grep -n 'pending' paper/grounding_paradox.tex paper/sections/*.tex' still finds every one.
+% STILL TO BE SUBSTITUTED BEFORE SUBMISSION (three call sites, all of them below):
+%   1. grounding_paradox.tex, Data availability -- the git commit hash of the archived snapshot.
+%      Minted last, when the snapshot is cut; replace \pending[hash to be supplied] with the hash.
+%   2. grounding_paradox.tex, Data availability -- the Zenodo DOI. The deposit does not exist yet.
+%   3. sections/SI.tex, compute ledger -- the same Zenodo DOI.
+% The bold sentence in the Data availability statement, and limitation (x), both disclose that these
+% are not yet real; do NOT delete either when the values are filled in -- rewrite them instead.
+% ---------------------------------------------------------------------
+% \pending prints in red so an unfilled field cannot be missed in a proof read. Three call sites:
+%   Data availability -- the commit hash and the Zenodo DOI; App. I -- the same DOI.
+% Both are minted at submission: the hash when the snapshot is cut, the DOI when the archive is
+% published. Nothing else is outstanding; the repository itself is public.
+\newcommand{\pending}[1][?]{{\color{red}\textbf{[#1]}}}
+\newcommand{\lnx}{\ensuremath{\ln x_2}}
+\newcommand{\Phicry}{\ensuremath{\Phi}}
+\newcommand{\lng}{\ensuremath{\ln\gamma_2}}
+\newcommand{\lngi}{\ensuremath{\ln\gamma_2^\infty}}
+\newcommand{\Tm}{\ensuremath{T_m}}
+\newcommand{\dHfus}{\ensuremath{\Delta H_{\mathrm{fus}}}}
+\newcommand{\Rgas}{\ensuremath{R}}
+\newcommand{\zstar}{\ensuremath{z^\star}}
+\newcommand{\Bclos}{\ensuremath{B_{\mathrm{closure}}}}
+\newcommand{\Binsuf}{\ensuremath{B_{\mathrm{insuff}}}}
+\newcommand{\Ex}{\ensuremath{\mathbb{E}}}
+\newcommand{\Var}{\ensuremath{\mathrm{Var}}}
+% The grounding gap. Renamed from \Gamma (2026-07-27) so that it no longer collides with the
+% COSMO-SAC segment activity coefficient \Gamma_S of Eq.~(4).
+\newcommand{\Ggap}{\ensuremath{\mathcal{G}}}
+% Hammett substituent constant, renamed from sigma so that it no longer collides with the
+% charge-density profile sigma of the main text.
+\newcommand{\hammett}{\ensuremath{\sigma_{\mathrm H}}}
+% TIGHT PLUS-MINUS, for a value +- its dispersion inside a NUMERIC TABLE COLUMN, and nowhere else.
+% \pm is a \mathbin, so TeX sets \medmuskip (4mu) either side of it; at the \footnotesize of the
+% article's tables that is 2.22pt a side, and the column gutter next to it was 4pt.  A reader
+% scanning a row therefore met 2.2 / 2.2 / 4.0 / 2.2 / 2.2 / 4.0 and the four cells read as one run
+% of tokens -- all three referees measured it independently on Table \ref{tab:baselines}.  The 3mu
+% taken back leaves a 0.56pt hairline inside the pair, which is what makes the pair one token, and
+% it frees 3.33pt in every column whose widest cell is a `a +- b' (three of the four there), which
+% is what pays for the wider gutter.  THE FIGURE IS 3.33 AND NOT THE 4.44 THIS LINE USED TO CARRY:
+% \pmsd removes 3mu a side, so 6mu, and 6mu at 10pt is 3.33pt -- 4.44pt would be 8mu, the whole
+% \medmuskip off both sides, which is not what the definition below does and is contradicted by
+% the 0.56pt hairline the line above states correctly.  Measured, not reasoned: \sbox
+% `$1.70\pm0.03$' and `$1.70\pmsd0.03$' at \footnotesize and \typeout the widths, 47.778pt against
+% 44.445pt.  DO NOT use it in prose -- `mean $\pm$ s.d.' in a block head is
+% a word and keeps the ordinary spacing.
+\newcommand{\pmsd}{\mspace{-3mu}\pm\mspace{-3mu}}
+
+% Line breaking. emergencystretch 2.5em with the default hyphenation penalties left 240 underfull
+% boxes, 40 of them at badness 10000: loose lines that waste horizontal space. Allowing more
+% hyphenation and less emergency stretch tightens them. Measured on the full document: 240 -> 202
+% underfull, 0 overfull either way, and the main text loses a page (22 -> 21). Raising
+% emergencystretch back to 2em restores the page; lowering hyphenpenalty below 50 starts to
+% produce overfull boxes.
+\setlength{\emergencystretch}{1.5em}
+\tolerance=2000
+\hyphenpenalty=50
+\exhyphenpenalty=50
+\doublehyphendemerits=2500

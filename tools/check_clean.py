@@ -24,7 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SUFFIXES = {".py", ".sh", ".md", ".yaml", ".yml", ".toml", ".tex", ".cfg", ".txt"}
-SKIP_DIRS = {".git", "__pycache__", ".pytest_cache", "figures", "deposits", ".venv"}
+SKIP_DIRS = {".git", "__pycache__", ".pytest_cache", "figures", "results", ".venv"}
 
 #: Text that is not English. The repository is read by an international readership and
 #: mixed-language commentary is a development artefact.

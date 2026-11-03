@@ -1,0 +1,111 @@
+# TGNN-Solv Configuration for Paper Reproduction
+# This config reproduces the exact hyperparameters used in the published paper.
+# Combines physics-informed GNN with three-phase curriculum learning.
+
+model:
+  # GNN backbone architecture
+  hidden_dim: 256  # Hidden dimension of MPNN layers; balance between model capacity and training speed
+  n_gnn_layers: 6  # Number of message-passing layers in the shared GNN encoder
+  encoder_role_mode: "shared_residual"  # Current canonical backbone: fully shared stack plus lightweight role adapters
+  encoder_role_specific_layers: 2  # Used only when encoder_role_mode="split_late"
+  n_cross_attn_layers: 3  # Number of Transformer cross-attention layers for solute-solvent interaction
+  
+  # Pair representation and interaction
+  pair_dim: 512  # Dimension of concatenated pair representation [g_sol, g_slv, g_sol*g_slv, |g_sol-g_slv|]
+  interaction_mode: "cross_attn"  # "cross_attn" (Transformer) or "bipartite" (complete message passing)
+  
+  # Physics and differentiation
+  use_implicit_diff: true  # Use implicit differentiation through SLE solver for stable gradients
+  use_solvent_moe: true  # Mixture-of-Experts routing based on solvent type for per-solvent specialization
+  nrtl_tau_mode: "ref_invT"  # Compact tau(T_ref) + inverse-temperature slope parameterization
+  use_temperature_in_encoder: false  # Keep crystal-property heads temperature-invariant
+  use_temperature_in_interaction: false  # Avoid leaking T into generic molecular embeddings
+  use_temperature_in_nrtl_head: true  # Inject T explicitly into the state/NRTL block
+  predict_dCp_fus: false  # Avoid a free latent heat-capacity term without direct supervision
+  fixed_dCp_fus: 0.0  # Default to the standard ideal-solubility expression unless dCp labels are added
+
+  # Fixed-point solver iterations
+  set2set_steps: 3  # Set2Set pooling steps for attention pooling aggregation
+  n_iter_train: 5  # SLE solver iterations during training (lower for speed)
+  n_iter_eval: 20  # SLE solver iterations during evaluation (higher for accuracy)
+  damping: 0.7  # Initial damping for the solver
+  solver_min_damping: 0.1  # Lower bound for adaptive damping
+  solver_tol_train: 1.0e-5  # Residual tolerance during training
+  solver_tol_eval: 1.0e-7  # Residual tolerance during evaluation
+  solver_adaptive_damping: true  # Shrink damping if residuals worsen
+  correction_max_abs: 2.0  # Bound on the residual correction around physics
+  correction_Tm_max_delta: 60.0  # Bound on T_m correction in Kelvin
+  correction_dH_fraction: 0.25  # Bound on relative dH_fus correction
+  correction_tau_max_delta: 2.0  # Bound on tau(T) corrections
+  monotonicity_force_explicit: false  # Use implicit d/dT in monotonicity loss
+
+training:
+  # Three-phase curriculum learning schedule
+  epochs_phase1: 50  # Phase 1: Property pretraining only (T_m, ΔH_fus, Hansen, γ∞)
+  epochs_phase2: 200  # Phase 2: Full SLE training with solubility loss
+  epochs_phase3: 50  # Phase 3: Fine-tuning with stronger monotonicity penalties
+  phase2_correction_unfreeze_epoch: 20  # Delay correction until the base physics path has settled
+
+  # Batch and optimization
+  batch_size: 64  # Training batch size; increase for faster training if GPU memory allows
+  use_pair_temperature_batching: true  # Keep multi-temperature measurements for the same pair in the same train batch when possible
+  pair_temperature_min_group_size: 2  # Minimum same-pair count required to build a paired chunk
+  pair_temperature_group_chunk_size: 4  # Maximum same-pair chunk size before mixing with other pairs
+  lr_phase1: 3.0e-4  # Property pretraining
+  lr_phase2: 1.0e-4  # Main SLE training
+  lr_phase3: 1.0e-6  # Fine-tuning
+  warmup_epochs: 5  # LR warmup before cosine decay
+  patience: 30  # Patience for early stopping on validation MAE
+  grad_clip: 1.0  # Gradient clipping threshold to prevent exploding gradients
+
+data:
+  # Data splitting strategy
+  split_mode: "solute_scaffold"  # "solute_scaffold" (structural diversity), "solute" (random), "solvent" (no solvent overlap)
+  train_ratio: 0.8  # 80% training set
+  val_ratio: 0.1  # 10% validation set
+  test_ratio: 0.1  # 10% test set
+  aux_only_fraction: 0.3  # Fraction of Phase 1 data with auxiliary targets but no solubility
+
+loss_weights:
+  # Phase 1: Property pretraining only
+  phase1:
+    sol: 0.0  # Solubility loss disabled in Phase 1
+    T_m: 1.0  # Melting point prediction loss
+    dH: 1.0  # Fusion enthalpy prediction loss
+    hansen: 0.5  # Hansen parameter consistency loss
+    gamma_inf: 0.5  # Infinite dilution activity coefficient loss
+    mono: 0.0  # Monotonicity penalty disabled in Phase 1
+    res: 0.0  # Correction gate magnitude penalty disabled
+    bridge: 0.0  # Hansen-NRTL bridge consistency disabled
+  
+  # Phase 2: Full SLE training
+  phase2:
+    sol: 1.0  # Main solubility loss (Huber on ln x₂)
+    T_m: 0.05  # Keep weak crystal-property supervision without dominating ln x₂
+    dH: 0.05  # Keep weak fusion-enthalpy supervision
+    hansen: 0.05  # Keep Hansen support light during main fitting
+    gamma_inf: 0.1  # Retain some activity-coefficient structure
+    mono: 0.0  # Delay monotonicity to the fine-tuning stage
+    res: 0.01  # Keep the correction local without over-penalizing the fit
+    bridge: 0.01  # Light Hansen-NRTL consistency
+    phys_pref: 0.01  # Keep a soft physics preference
+    direct_reg: 0.01  # Keep the residual proposal local
+    direct_nll: 0.01  # Calibrate proposal uncertainty lightly
+    pair_temp_rank: 0.005  # Gentle same-pair temperature ranking consistency
+    vant_hoff_local: 0.001  # Gentle local linearity in ln(x₂) vs 1/T
+  
+  # Phase 3: Fine-tuning
+  phase3:
+    sol: 1.0  # Primary solubility loss
+    T_m: 0.03  # Keep only light auxiliary anchoring in the final stage
+    dH: 0.03  # Same for fusion enthalpy
+    hansen: 0.03  # Light Hansen support
+    gamma_inf: 0.05  # Light activity-coefficient anchoring
+    mono: 0.1  # Add monotonicity without overwhelming the main target
+    res: 0.02  # Moderate correction regularization
+    bridge: 0.02  # Moderate bridge consistency
+    phys_pref: 0.01  # Soft physics-first bias
+    direct_reg: 0.02  # Keep the proposal local
+    direct_nll: 0.02  # Calibrate proposal uncertainty
+    pair_temp_rank: 0.01  # Moderate same-pair temperature ranking
+    vant_hoff_local: 0.001  # Keep local van't Hoff regularization gentle

@@ -1,0 +1,97 @@
+# Tuned TGNN-Solv configuration for the split-late encoder comparison.
+
+model:
+  hidden_dim: 256
+  n_gnn_layers: 6
+  encoder_role_mode: "split_late"
+  encoder_role_specific_layers: 2
+  n_cross_attn_layers: 3
+  pair_dim: 512
+  interaction_mode: "cross_attn"
+  activity_model: "nrtl"
+  dropout: 0.012430793241475136
+  use_implicit_diff: true
+  use_solvent_moe: true
+  nrtl_tau_mode: "ref_invT"
+  use_temperature_in_encoder: false
+  use_temperature_in_interaction: false
+  use_temperature_in_nrtl_head: true
+  predict_dCp_fus: false
+  fixed_dCp_fus: 0.0
+  set2set_steps: 3
+  n_iter_train: 5
+  n_iter_eval: 20
+  damping: 0.7
+  solver_min_damping: 0.1
+  solver_tol_train: 1.0e-5
+  solver_tol_eval: 1.0e-7
+  solver_adaptive_damping: true
+  correction_max_abs: 2.0
+  correction_Tm_max_delta: 60.0
+  correction_dH_fraction: 0.25
+  correction_tau_max_delta: 2.0
+  monotonicity_force_explicit: false
+
+training:
+  epochs_phase1: 50
+  epochs_phase2: 200
+  epochs_phase3: 50
+  phase2_correction_unfreeze_epoch: 20
+  batch_size: 64
+  use_pair_temperature_batching: true
+  pair_temperature_min_group_size: 2
+  pair_temperature_group_chunk_size: 4
+  lr_phase1: 2.558463206591171e-4
+  lr_phase2: 8.528210688637237e-5
+  lr_phase3: 8.528210688637238e-6
+  warmup_epochs: 0
+  patience: 30
+  grad_clip: 2.0
+
+data:
+  split_mode: "solute_scaffold"
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  aux_only_fraction: 0.3
+
+loss_weights:
+  phase1:
+    sol: 0.0
+    T_m: 1.0
+    dH: 1.0
+    hansen: 0.5
+    gamma_inf: 0.5
+    mono: 0.0
+    res: 0.0
+    bridge: 0.0
+
+  phase2:
+    sol: 1.0
+    T_m: 0.05
+    dH: 0.05
+    hansen: 0.05
+    gamma_inf: 0.1
+    mono: 0.0
+    res: 0.01
+    bridge: 0.01
+    phys_pref: 0.01
+    direct_reg: 0.01
+    direct_nll: 0.01
+    pair_temp_rank: 0.005
+    vant_hoff_local: 0.001
+
+  phase3:
+    sol: 1.0
+    T_m: 0.03
+    dH: 0.03
+    hansen: 0.03
+    gamma_inf: 0.05
+    mono: 0.1
+    res: 0.02
+    bridge: 0.02
+    phys_pref: 0.01
+    direct_reg: 0.02
+    direct_nll: 0.02
+    pair_temp_rank: 0.01
+    vant_hoff_local: 0.001

@@ -185,9 +185,9 @@ def fig_attribution(plt) -> None:
           "(a) the error is in the occupied bins",
           "null: zeroing the same number\nof randomly chosen cells")
     strip(axb,
-          [("expensive third\nof the grid", [a[s]["recovered_дорогая"] for s in SEEDS]),
-           ("middle third", [a[s]["recovered_средняя"] for s in SEEDS]),
-           ("cheap third", [a[s]["recovered_дешёвая"] for s in SEEDS])],
+          [("expensive third\nof the grid", [a[s]["recovered_expensive"] for s in SEEDS]),
+           ("middle third", [a[s]["recovered_middle"] for s in SEEDS]),
+           ("cheap third", [a[s]["recovered_cheap"] for s in SEEDS])],
           [np.asarray(a[s]["null_recovered"]) for s in SEEDS],
           "(b) cost does not localise the error",
           "null: reference shape in a\nrandomly chosen third of bins")

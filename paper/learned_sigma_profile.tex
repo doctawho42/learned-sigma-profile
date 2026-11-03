@@ -1,0 +1,150 @@
+% learned_sigma_profile.tex -- перезаписанная рукопись. Компилируется XeLaTeX, дважды.
+% Прежний файл grounding_paradox.tex сохранён как есть: это другая рамка, не редакция этой.
+% ВЁРСТКА. layout=twocolumn даёт журнальный вид, 14 страниц; layout=traditional -- формат
+% подачи ACS (одна колонка, двойной интервал), те же 4700 слов тела занимают там 25 страниц.
+% Объём содержания от переключателя не зависит; менять его для сдачи, а не для счёта страниц.
+\documentclass[journal=jcisd8,manuscript=article,layout=twocolumn]{achemso}
+\input{preamble}
+\externaldocument[][nocite]{grounding_paradox_si}
+
+\title{When a Learned $\sigma$-Profile Is Not One: Diagnosing the Intermediate of a
+Physics-Embedded Solubility Model}
+
+\author{N.~L. Polomoshnov}
+\affiliation[MSU]{Faculty of Bioengineering and Bioinformatics, Lomonosov Moscow State
+University, Moscow, Russia}
+\alsoaffiliation[IBMC]{V.~N. Orekhovich Institute of Biomedical Chemistry, Moscow, Russia}
+\email{nikitapol@fbb.msu.ru}
+\author{A.~V. Rudik}
+\affiliation[IBMC]{V.~N. Orekhovich Institute of Biomedical Chemistry, Moscow, Russia}
+
+\abbreviations{SLE, solid--liquid equilibrium; IDAC, infinite-dilution activity coefficient;
+VT-2005, Virginia Tech 2005 $\sigma$-profile database}
+\keywords{solubility prediction, physics-informed machine learning, COSMO-SAC, $\sigma$-profile,
+model interpretability, concept bottleneck}
+
+\begin{document}
+
+\begin{tocentry}
+\includegraphics[width=\linewidth,height=1.72in,keepaspectratio]{figs/fig_toc_v2.pdf}
+\end{tocentry}
+
+\begin{abstract}
+Physics-informed predictors combine learned physical quantities through a fixed thermodynamic
+relation, which allows a prediction to be audited and a better value for one quantity to be
+supplied without retraining. We ask whether the values such a network places in the slot of a
+physical quantity are that quantity. The system is a graph network supplying the $\sigma$-profile
+consumed by COSMO-SAC to predict the solubility of solids, and every measurement is read against a
+control. The observations determine two of the fifty directions in which a profile can move. The
+network places screening-charge density where the reference tabulation carries none, concentrating
+in the windows that activate the model's hydrogen-bonding term, and the output layer is not the
+cause; that departure is the most visible and the least consequential, since removing it leaves the
+thermodynamics unchanged. What the thermodynamics responds to is the magnitude of the profile where
+it is populated. The intermediate also does not decompose: replacing part of it with reference
+values is frequently worse than replacing none. Supplying the whole reference profile improves the
+activity coefficients the profile exists to produce and degrades the solubility predicted from
+them.
+\end{abstract}
+
+\maketitle
+
+\input{sections/introduction-v2}
+
+\input{sections/system-v2}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig_pipeline.pdf}
+\caption{The pipeline. A shared encoder reads the solute and solvent graphs; one head supplies the
+crystal term of equation~\eqref{eq:sle} and another the $\sigma$-profile $\hat{z}$ consumed by
+COSMO-SAC. The profile head is supervised against the reference table and also receives the
+gradient of the solubility loss. At prediction time the reference profile can replace the learned
+one.}
+\label{fig:pipeline}
+\end{figure*}
+
+\input{sections/tab-battery}
+
+\input{sections/results-v2}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig_donor_window.pdf}
+\caption{Donor-window area for sixteen solvents in the reference tabulation (left) and in the
+learned profile (right). Percentages give that window's share of the molecule's cavity surface in
+the learned profile.}
+\label{fig:windows}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig_pedestal_learned.pdf}
+\caption{(a) Cumulative distribution of the profile mass placed in bins where the reference is
+exactly zero, for five seeds in both roles and for an untrained network of the same architecture.
+(b) The same mass summed over each molecule.}
+\label{fig:pedestal}
+\end{figure*}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig_cost_map.pdf}
+\caption{(a) Mean change in the predicted activity coefficient produced by moving a fixed mass from
+the core into each bin, for five seeds (band) and for random profiles of the same total area.
+(b) The gradient of that cost, normalised to mean one. Dotted lines mark
+$\pm\sigma_{\mathrm{hb}}$.}
+\label{fig:costmap}
+\end{figure}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig_attribution.pdf}
+\caption{Share of the gap between the learned and the reference profile recovered in the predicted
+activity coefficients, one circle per seed and a bar at the mean. (a) Reference values supplied in
+the bins where the reference is nonzero, and exact zeros in the bins where it is zero.
+(b) Reference values supplied in thirds of the grid ordered by the cost of
+Figure~\ref{fig:costmap}. The shaded band is the central $90\%$ of the control named in each
+panel.}
+\label{fig:attribution}
+\end{figure*}
+
+\input{sections/discussion-v2}
+
+\section*{Author contributions}
+\noindent
+N.~L. Polomoshnov: Conceptualization, Methodology, Software, Formal analysis, Investigation,
+Data curation, Visualization, Writing -- original draft.
+A.~V. Rudik: Writing -- review \& editing.
+
+\section*{Funding}
+\noindent The study was supported by the Russian Science Foundation, project No.~25-25-00148,
+\url{https://rscf.ru/project/25-25-00148/}.
+
+\section*{Notes}
+\noindent The authors declare no competing financial interest.
+
+\section*{Acknowledgement}
+\noindent Parts of the analysis code and of the manuscript text were drafted with the assistance of
+a large language model, under author direction; all reported measurements were produced by code in
+the deposited repository and checked by the authors against the deposited artifacts.
+
+\section*{Data and Software Availability}
+The analysis code and the intermediate artifacts small enough to version are available at
+\url{https://github.com/doctawho42/tgnn-solv} under the MIT licence; the commit the reported
+numbers were produced from is recorded in the deposit. Model checkpoints, the processed split and
+the per-arm prediction files are deposited in the Zenodo archive
+\texttt{10.5281/zenodo.22263434}. The deposit covers the COSMO-SAC arms reported here; weights for
+the NRTL variants discussed in the Supporting Information were not retained. Solubility data are
+BigSolDB~2.0 \cite{krasnov2025bigsoldb}; reference $\sigma$-profiles are the VT-2005 database
+\cite{mullins2006} as redistributed with Ref.~\cite{bell2020cosmosac}; infinite-dilution activity
+coefficients are from ThermoML \cite{frenkel2011thermoml}; the acid-dissociation data used in the
+Supporting Information are the OPERA compilation \cite{mansouri2019opera}.
+
+\section*{Supporting Information Available}
+Architecture and training details; construction of the splits and the auxiliary supervision
+streams; the pre-declared reading rule for each measurement with its outcome; the decomposition of
+the model's error against what its inputs leave unresolved; and the second system based on a linear
+free-energy relation.
+
+\bibliography{references_verified}
+
+\end{document}

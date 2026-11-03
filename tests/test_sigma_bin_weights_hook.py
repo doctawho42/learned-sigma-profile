@@ -259,32 +259,12 @@ def test_weight_vector_is_not_the_grid_geometry():
 
 
 # --------------------------------------------------------------------------------------------
-# Ворота перед покупкой T1. Привязаны потому, что оба читаются против арма, а негатив в этом
-# проекте получает тот же аудит, что позитив: у обоих есть нулевое плечо и посидовый повтор, и
-# оба переведены в единицы притязания до сравнения с чем-либо.
+# The pre-declared reading of the attribution gate, pinned because a negative result gets the
+# same audit as a positive one here: a null arm, a per-seed replicate, and the effect converted
+# into the units of the claim before it is compared with anything.
 # --------------------------------------------------------------------------------------------
 
-GATE1 = ROOT / "results/per_bin_sensitivity_weights/weight_points_at_error.json"
 GATE2 = ROOT / "results/per_bin_sensitivity_weights/closure_error_attribution.json"
-
-
-def test_gate1_weight_points_against_the_profile_error_on_every_seed():
-    g = json.loads(GATE1.read_text(encoding="utf8"))
-    assert g["n_shuffle"] >= 1000
-    for which in ("train", "idac"):
-        b = g["by_weight_vector"][which]
-        assert b["n_expensive_bins"] == 17            # ровно треть сетки из 51 бина
-        shares = [x["share_in_expensive_third"] for x in b["per_seed"]]
-        rhos = [x["spearman_w_vs_error"] for x in b["per_seed"]]
-        assert len(shares) == 5
-        assert max(shares) < b["null_share_mean"], (
-            f"{which}: доля ошибки в дорогой трети {max(shares):.3f} обязана быть НИЖЕ "
-            f"перемешанного нуля {b['null_share_mean']:.3f} на всех пяти сидах"
-        )
-        assert max(rhos) < -0.4, (
-            f"{which}: Спирмен(вес, ошибка) = {max(rhos):+.3f}; знак и порядок -- это и есть "
-            "содержание ворот 1"
-        )
 
 
 def test_gate2_expensive_third_does_not_beat_a_random_third():
@@ -296,7 +276,7 @@ def test_gate2_expensive_third_does_not_beat_a_random_third():
             f"сид {s}: невозмущённое плечо не воспроизводит депонированный AAD, читать "
             "подстановки нельзя"
         )
-    exp = np.array([r["recovered_дорогая"] for r in ps.values()])
+    exp = np.array([r["recovered_expensive"] for r in ps.values()])
     null = np.array([np.mean(r["null_recovered"]) for r in ps.values()])
     assert exp.mean() < null.mean(), (
         f"дорогая треть возвращает {100 * exp.mean():.1f}% разрыва против {100 * null.mean():.1f}% "

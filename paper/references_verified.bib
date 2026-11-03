@@ -1,0 +1,822 @@
+% Verified replacements for the 3 placeholder citations flagged by the
+% repo-to-paper review (fabricated arXiv IDs). Keys preserved so existing
+% \cite{...} resolve. Verified 2026-07-03 via Crossref / arXiv / RSC / Consensus.
+% NB: winter2022 and sanchezmedina2023 are Digital Discovery papers (our target venue).
+
+% was: "Osanloo, A. (2024) FastSolv ... arXiv id уточняется"  -> fabricated author + no arXiv.
+% Real FastSolv paper (direct-model SOTA peer of SolProp/Vermeire):
+@article{osanloo2024,
+  author  = {Attia, Lucas and Burns, Jackson W. and Doyle, Patrick S. and Green, William H.},
+  title   = {Data-driven organic solubility prediction at the limit of aleatoric uncertainty},
+  journal = {Nature Communications},
+  year    = {2025},
+  volume  = {16},
+  pages   = {7497},
+  doi     = {10.1038/s41467-025-62717-7},
+  url     = {https://doi.org/10.1038/s41467-025-62717-7},
+  note    = {FASTSOLV model; earlier ChemRxiv 2024 preprint doi:10.26434/chemrxiv-2024-93qp3}
+}
+
+% was: "Winter, R. (2022) ... arxiv/2203.00000"  -> wrong initial + fabricated arXiv id.
+@article{winter2022,
+  author        = {Winter, Benedikt and Winter, Clemens and Schilling, Johannes and Bardow, Andr{\'e}},
+  title         = {A smile is all you need: Predicting limiting activity coefficients from {SMILES} with natural language processing},
+  journal       = {Digital Discovery},
+  year          = {2022},
+  volume        = {1},
+  number        = {6},
+  pages         = {859--869},
+  publisher     = {Royal Society of Chemistry},
+  doi           = {10.1039/D2DD00058J},
+  eprint        = {2206.07048},
+  archivePrefix = {arXiv},
+  primaryClass  = {physics.chem-ph}
+}
+
+% was: "Sanchez Medina, M. (2023) ... arxiv/2304.00000"  -> wrong initial + fabricated arXiv id.
+@article{sanchezmedina2023,
+  author  = {Sanchez Medina, Edgar Ivan and Linke, Steffen and Stoll, Martin and Sundmacher, Kai},
+  title   = {Gibbs--Helmholtz graph neural network: capturing the temperature dependency of activity coefficients at infinite dilution},
+  journal = {Digital Discovery},
+  year    = {2023},
+  volume  = {2},
+  number  = {3},
+  pages   = {781--798},
+  doi     = {10.1039/D2DD00142J},
+  eprint  = {2212.01199},
+  archivePrefix = {arXiv},
+  url     = {https://doi.org/10.1039/D2DD00142J}
+}
+
+
+% ============================================================================
+% Methodological + domain prior-art for the "grounding paradox" thesis.
+% Verified 2026-07-07 via web search (citation-verify workflow, 11/11 confirmed,
+% 0 fabricated). CAVEATS before submission:
+%  - damour2022: JMLR has no Crossref DOI; use the arXiv eprint / JMLR url (no doi field).
+%  - vermeire2022solprop: SolProp = JACS 2022 144(24):10785 (NOT Chem.Eng.J.).
+%  - krasnov2023bigsoldb: this is the 2023 ChemRxiv PREPRINT. The project uses
+%    BigSolDB v2.1 -> likely cite the PEER-REVIEWED BigSolDB 2.0 instead:
+%    Krasnov et al., Scientific Data 12 (2025), doi 10.1038/s41597-025-05559-8.
+%    DECIDE which version the data actually came from before submitting.
+%  - transtrum2015 selects the JCP "Perspective"; villaverde2016 over Chis2011 — both real.
+% ============================================================================
+
+@article{kennedy2001,
+  author  = {Kennedy, Marc C. and O'Hagan, Anthony},
+  title   = {Bayesian Calibration of Computer Models},
+  journal = {Journal of the Royal Statistical Society: Series B (Statistical Methodology)},
+  year    = {2001},
+  volume  = {63},
+  number  = {3},
+  pages   = {425--464},
+  doi     = {10.1111/1467-9868.00294},
+  publisher = {Oxford University Press},
+}
+
+@article{brynjarsdottir2014,
+  author  = {Brynjarsd{\'o}ttir, Jenny and O'Hagan, Anthony},
+  title   = {Learning about physical parameters: the importance of model discrepancy},
+  journal = {Inverse Problems},
+  year    = {2014},
+  volume  = {30},
+  number  = {11},
+  pages   = {114007},
+  doi     = {10.1088/0266-5611/30/11/114007},
+  publisher = {IOP Publishing}
+}
+
+@article{transtrum2015,
+  author  = {Transtrum, Mark K. and Machta, Benjamin B. and Brown, Kevin S. and Daniels, Bryan C. and Myers, Christopher R. and Sethna, James P.},
+  title   = {Perspective: Sloppiness and emergent theories in physics, biology, and beyond},
+  journal = {The Journal of Chemical Physics},
+  year    = {2015},
+  volume  = {143},
+  number  = {1},
+  pages   = {010901},
+  doi     = {10.1063/1.4923066},
+  eprint  = {1501.07668},
+  archivePrefix = {arXiv},
+  primaryClass  = {cond-mat.stat-mech}
+}
+
+@article{gutenkunst2007,
+  author  = {Gutenkunst, Ryan N. and Waterfall, Joshua J. and Casey, Fergal P. and Brown, Kevin S. and Myers, Christopher R. and Sethna, James P.},
+  title   = {Universally Sloppy Parameter Sensitivities in Systems Biology Models},
+  journal = {PLoS Computational Biology},
+  year    = {2007},
+  volume  = {3},
+  number  = {10},
+  pages   = {1871--1878},
+  eid     = {e189},
+  doi     = {10.1371/journal.pcbi.0030189},
+  eprint  = {q-bio/0701039},
+  archivePrefix = {arXiv},
+  primaryClass  = {q-bio.QM}
+}
+
+@article{raue2009,
+  author  = {Raue, A. and Kreutz, C. and Maiwald, T. and Bachmann, J. and Schilling, M. and Klingm{\"u}ller, U. and Timmer, J.},
+  title   = {Structural and practical identifiability analysis of partially observed dynamical models by exploiting the profile likelihood},
+  journal = {Bioinformatics},
+  year    = {2009},
+  volume  = {25},
+  number  = {15},
+  pages   = {1923--1929},
+  doi     = {10.1093/bioinformatics/btp358}
+}
+
+@book{vandervaart1998,
+  author    = {van der Vaart, A. W.},
+  title     = {Asymptotic Statistics},
+  publisher = {Cambridge University Press},
+  year      = {1998},
+  series    = {Cambridge Series in Statistical and Probabilistic Mathematics},
+  note      = {Chapter 25 (semiparametric efficiency: efficient score and information)}
+}
+
+@article{villaverde2016,
+  author  = {Villaverde, Alejandro F. and Barreiro, Antonio and Papachristodoulou, Antonis},
+  title   = {Structural Identifiability of Dynamic Systems Biology Models},
+  journal = {PLoS Computational Biology},
+  year    = {2016},
+  volume  = {12},
+  number  = {10},
+  pages   = {e1005153},
+  doi     = {10.1371/journal.pcbi.1005153},
+  pmid    = {27792726},
+  pmcid   = {PMC5085250},
+  editor  = {Nie, Qing},
+  issn    = {1553-7358},
+  publisher = {Public Library of Science}
+}
+
+@article{damour2022,
+  title   = {Underspecification Presents Challenges for Credibility in Modern Machine Learning},
+  author  = {D'Amour, Alexander and Heller, Katherine and Moldovan, Dan and Adlam, Ben and Alipanahi, Babak and Beutel, Alex and Chen, Christina and Deaton, Jonathan and Eisenstein, Jacob and Hoffman, Matthew D. and Hormozdiari, Farhad and Houlsby, Neil and Hou, Shaobo and Jerfel, Ghassen and Karthikesalingam, Alan and Lucic, Mario and Ma, Yian and McLean, Cory and Mincu, Diana and Mitani, Akinori and Montanari, Andrea and Nado, Zachary and Natarajan, Vivek and Nielson, Christopher and Osborne, Thomas F. and Raman, Rajiv and Ramasamy, Kim and Sayres, Rory and Schrouff, Jessica and Seneviratne, Martin and Sequeira, Shannon and Suresh, Harini and Veitch, Victor and Vladymyrov, Max and Wang, Xuezhi and Webster, Kellie and Yadlowsky, Steve and Yun, Taedong and Zhai, Xiaohua and Sculley, D.},
+  journal = {Journal of Machine Learning Research},
+  year    = {2022},
+  volume  = {23},
+  number  = {226},
+  pages   = {1--61},
+  eprint  = {2011.03395},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG},
+  url     = {https://www.jmlr.org/papers/v23/20-1335.html}
+}
+
+@article{kapoor2023,
+  author  = {Kapoor, Sayash and Narayanan, Arvind},
+  title   = {Leakage and the reproducibility crisis in machine-learning-based science},
+  journal = {Patterns},
+  year    = {2023},
+  volume  = {4},
+  number  = {9},
+  pages   = {100804},
+  doi     = {10.1016/j.patter.2023.100804},
+  issn    = {2666-3899},
+  publisher = {Elsevier (Cell Press)},
+  eprint  = {2207.07048},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG}
+}
+
+@inproceedings{mahajan2025crm,
+  title     = {Compositional Risk Minimization},
+  author    = {Mahajan, Divyat and Pezeshki, Mohammad and Arnal, Charles and Mitliagkas, Ioannis and Ahuja, Kartik and Vincent, Pascal},
+  booktitle = {Proceedings of the 42nd International Conference on Machine Learning},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {267},
+  pages     = {42503--42553},
+  year      = {2025},
+  publisher = {PMLR},
+  eprint    = {2410.06303},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG}
+}
+
+@article{vermeire2022solprop,
+  author  = {Vermeire, Florence H. and Chung, Yunsie and Green, William H.},
+  title   = {Predicting Solubility Limits of Organic Solutes for a Wide Range of Solvents and Temperatures},
+  journal = {Journal of the American Chemical Society},
+  year    = {2022},
+  volume  = {144},
+  number  = {24},
+  pages   = {10785--10797},
+  doi     = {10.1021/jacs.2c01768}
+}
+
+@article{krasnov2023bigsoldb,
+  author  = {Krasnov, Lev and Mikhaylov, Simon and Fedorov, Maxim and Sosnin, Sergey},
+  title   = {{BigSolDB}: Solubility Dataset of Compounds in Organic Solvents and Water in a Wide Range of Temperatures},
+  year    = {2023},
+  journal = {ChemRxiv},
+  doi     = {10.26434/chemrxiv-2023-qqslt},
+  url     = {https://doi.org/10.26434/chemrxiv-2023-qqslt},
+  note    = {Preprint; superseded by the peer-reviewed BigSolDB 2.0 (krasnov2025bigsoldb)}
+}
+
+% ============================================================================
+% Closing additions 2026-07-08 (verified via web search): calibration refinement
+% (Murphy; DeGroot--Fienberg), QMLE under misspecification (White), and the
+% peer-reviewed BigSolDB 2.0 (the project's data source; v2.1 is a minor update
+% of this Scientific Data release, which is the citable version).
+% ============================================================================
+
+@article{murphy1973,
+  author    = {Murphy, Allan H.},
+  title     = {A New Vector Partition of the Probability Score},
+  journal   = {Journal of Applied Meteorology},
+  year      = {1973},
+  volume    = {12},
+  number    = {4},
+  pages     = {595--600},
+  doi       = {10.1175/1520-0450(1973)012<0595:ANVPOT>2.0.CO;2},
+  publisher = {American Meteorological Society}
+}
+
+@article{degroot1983,
+  author    = {DeGroot, Morris H. and Fienberg, Stephen E.},
+  title     = {The Comparison and Evaluation of Forecasters},
+  journal   = {Journal of the Royal Statistical Society: Series D (The Statistician)},
+  year      = {1983},
+  volume    = {32},
+  number    = {1--2},
+  pages     = {12--22},
+  doi       = {10.2307/2987588},
+  publisher = {Wiley}
+}
+
+@article{white1982,
+  author    = {White, Halbert},
+  title     = {Maximum Likelihood Estimation of Misspecified Models},
+  journal   = {Econometrica},
+  year      = {1982},
+  volume    = {50},
+  number    = {1},
+  pages     = {1--25},
+  doi       = {10.2307/1912526},
+  publisher = {The Econometric Society}
+}
+
+@article{krasnov2025bigsoldb,
+  author    = {Krasnov, Lev and Malikov, Dmitry and Kiseleva, Marina and Tatarin, Sergei and Sosnin, Sergey and Bezzubov, Stanislav},
+  title     = {{BigSolDB} 2.0, dataset of solubility values for organic compounds in different solvents at various temperatures},
+  journal   = {Scientific Data},
+  year      = {2025},
+  volume    = {12},
+  pages     = {1236},
+  doi       = {10.1038/s41597-025-05559-8},
+  publisher = {Nature Publishing Group}
+}
+
+@inproceedings{rampasek2022,
+  author    = {Ramp{\'a}{\v{s}}ek, Ladislav and Galkin, Mikhail and Dwivedi, Vijay Prakash and Luu, Anh Tuan and Wolf, Guy and Beaini, Dominique},
+  title     = {Recipe for a General, Powerful, Scalable Graph Transformer},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2022},
+  volume    = {35}
+}
+
+@article{renon1968,
+  author    = {Renon, Henri and Prausnitz, J. M.},
+  title     = {Local Compositions in Thermodynamic Excess Functions for Liquid Mixtures},
+  journal   = {AIChE Journal},
+  year      = {1968},
+  volume    = {14},
+  number    = {1},
+  pages     = {135--144},
+  doi       = {10.1002/aic.690140124}
+}
+
+@article{fredenslund1975,
+  author    = {Fredenslund, Aage and Jones, Russell L. and Prausnitz, J. M.},
+  title     = {Group-Contribution Estimation of Activity Coefficients in Nonideal Liquid Mixtures},
+  journal   = {AIChE Journal},
+  year      = {1975},
+  volume    = {21},
+  number    = {6},
+  pages     = {1086--1099},
+  doi       = {10.1002/aic.690210607}
+}
+
+@article{lin2002,
+  author    = {Lin, Shiang-Tai and Sandler, Stanley I.},
+  title     = {A Priori Phase Equilibrium Prediction from a Segment Contribution Solvation Model},
+  journal   = {Industrial \& Engineering Chemistry Research},
+  year      = {2002},
+  volume    = {41},
+  number    = {5},
+  pages     = {899--913},
+  doi       = {10.1021/ie001047w}
+}
+
+@article{mullins2006,
+  author    = {Mullins, Eric and Oldland, Richard and Liu, Y. A. and Wang, Shu and Sandler, Stanley I. and Chen, Chau-Chyun and Zwolak, Michael and Seavey, Keith C.},
+  title     = {{Sigma}-Profile Database for Using {COSMO}-Based Thermodynamic Methods},
+  journal   = {Industrial \& Engineering Chemistry Research},
+  year      = {2006},
+  volume    = {45},
+  number    = {12},
+  pages     = {4389--4415},
+  doi       = {10.1021/ie060370h}
+}
+
+@article{karniadakis2021,
+  author    = {Karniadakis, George Em and Kevrekidis, Ioannis G. and Lu, Lu and Perdikaris, Paris and Wang, Sifan and Yang, Liu},
+  title     = {Physics-informed machine learning},
+  journal   = {Nature Reviews Physics},
+  year      = {2021},
+  volume    = {3},
+  pages     = {422--440},
+  doi       = {10.1038/s42254-021-00314-5}
+}
+
+@article{raissi2019,
+  author    = {Raissi, Maziar and Perdikaris, Paris and Karniadakis, George Em},
+  title     = {Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations},
+  journal   = {Journal of Computational Physics},
+  year      = {2019},
+  volume    = {378},
+  pages     = {686--707},
+  doi       = {10.1016/j.jcp.2018.10.045}
+}
+
+@article{willard2022,
+  author    = {Willard, Jared and Jia, Xiaowei and Xu, Shaoming and Steinbach, Michael and Kumar, Vipin},
+  title     = {Integrating Scientific Knowledge with Machine Learning for Engineering and Environmental Systems},
+  journal   = {ACM Computing Surveys},
+  year      = {2022},
+  volume    = {55},
+  number    = {4},
+  pages     = {1--37},
+  doi       = {10.1145/3514228}
+}
+
+@inproceedings{krishnapriyan2021,
+  author    = {Krishnapriyan, Aditi S. and Gholami, Amir and Zhe, Shandian and Kirby, Robert M. and Mahoney, Michael W.},
+  title     = {Characterizing possible failure modes in physics-informed neural networks},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2021},
+  volume    = {34}
+}
+
+@article{hansch1991survey,
+  author    = {Hansch, Corwin and Leo, A. and Taft, R. W.},
+  title     = {A Survey of {H}ammett Substituent Constants and Resonance and Field Parameters},
+  journal   = {Chemical Reviews},
+  year      = {1991},
+  volume    = {91},
+  number    = {2},
+  pages     = {165--195},
+  doi       = {10.1021/cr00002a004}
+}
+
+@article{mansouri2019opera,
+  author    = {Mansouri, Kamel and Cariello, Neil F. and Korotcov, Alexandru and Tkachenko, Valery and Grulke, Christopher M. and Sprankle, Catherine S. and Allen, David and Casey, Warren M. and Kleinstreuer, Nicole C. and Williams, Antony J.},
+  title     = {Open-source {QSAR} models for {pKa} prediction using multiple machine learning approaches},
+  journal   = {Journal of Cheminformatics},
+  year      = {2019},
+  volume    = {11},
+  pages     = {60},
+  doi       = {10.1186/s13321-019-0384-1}
+}
+
+@article{frenkel2011thermoml,
+  author    = {Frenkel, Michael and Chirico, Robert D. and Diky, Vladimir V. and Yan, Xinjian and Dong, Qian and Muzny, Chris},
+  title     = {{ThermoML}: An {XML}-Based Approach for Storage and Exchange of Experimental and Critically Evaluated Thermophysical and Thermochemical Property Data},
+  journal   = {Journal of Chemical Information and Computer Sciences},
+  year      = {2003},
+  volume    = {43},
+  number    = {6},
+  pages     = {1344--1359}
+}
+
+@article{bell2020cosmosac,
+  author  = {Bell, Ian H. and Mickoleit, Erik and Hsieh, Chieh-Ming and Lin, Shiang-Tai and Vrabec, Jadran and Breitkopf, Cornelia and J{\"a}ger, Andreas},
+  title   = {A Benchmark Open-Source Implementation of {COSMO-SAC}},
+  journal = {Journal of Chemical Theory and Computation},
+  volume  = {16},
+  number  = {4},
+  pages   = {2635--2646},
+  year    = {2020},
+  doi     = {10.1021/acs.jctc.9b01016}
+}
+
+@article{hsieh2010,
+  author  = {Hsieh, Chieh-Ming and Sandler, Stanley I. and Lin, Shiang-Tai},
+  title   = {Improvements of {COSMO-SAC} for Vapor--Liquid and Liquid--Liquid Equilibrium Predictions},
+  journal = {Fluid Phase Equilibria},
+  volume  = {297},
+  number  = {1},
+  pages   = {90--97},
+  year    = {2010},
+  doi     = {10.1016/j.fluid.2010.06.011}
+}
+
+@article{hsieh2014dsp,
+  author  = {Hsieh, Chieh-Ming and Lin, Shiang-Tai and Vrabec, Jadran},
+  title   = {Considering the Dispersive Interactions in the {COSMO-SAC} Model for More Accurate Predictions of Fluid Phase Behavior},
+  journal = {Fluid Phase Equilibria},
+  volume  = {367},
+  pages   = {109--116},
+  year    = {2014},
+  doi     = {10.1016/j.fluid.2014.01.032}
+}
+
+@article{fingerhut2017,
+  author  = {Fingerhut, Robin and Chen, Wei-Lin and Schedemann, Andre and Cordes, Wilfried and Rarey, J{\"u}rgen and Hsieh, Chieh-Ming and Vrabec, Jadran and Lin, Shiang-Tai},
+  title   = {Comprehensive Assessment of {COSMO-SAC} Models for Predictions of Fluid-Phase Equilibria},
+  journal = {Industrial \& Engineering Chemistry Research},
+  volume  = {56},
+  number  = {35},
+  pages   = {9868--9884},
+  year    = {2017},
+  doi     = {10.1021/acs.iecr.7b01360}
+}
+
+@book{engl1996,
+  author    = {Engl, Heinz W. and Hanke, Martin and Neubauer, Andreas},
+  title     = {Regularization of Inverse Problems},
+  publisher = {Kluwer Academic Publishers},
+  series    = {Mathematics and Its Applications},
+  volume    = {375},
+  year      = {1996}
+}
+
+@article{schwab2019,
+  author  = {Schwab, Johannes and Antholzer, Stephan and Haltmeier, Markus},
+  title   = {Deep Null Space Learning for Inverse Problems: Convergence Analysis and Rates},
+  journal = {Inverse Problems},
+  volume  = {35},
+  number  = {2},
+  pages   = {025008},
+  year    = {2019},
+  doi     = {10.1088/1361-6420/aaf14a}
+}
+
+@book{hansen1998,
+  author    = {Hansen, Per Christian},
+  title     = {Rank-Deficient and Discrete Ill-Posed Problems: Numerical Aspects of Linear Inversion},
+  publisher = {SIAM},
+  series    = {SIAM Monographs on Mathematical Modeling and Computation},
+  year      = {1998}
+}
+
+@article{robins1997,
+  author  = {Robins, James M. and Ritov, Ya'acov},
+  title   = {Toward a Curse of Dimensionality Appropriate ({CODA}) Asymptotic Theory for Semi-Parametric Models},
+  journal = {Statistics in Medicine},
+  volume  = {16},
+  number  = {3},
+  pages   = {285--319},
+  year    = {1997}
+}
+
+@article{hirano2003,
+  author  = {Hirano, Keisuke and Imbens, Guido W. and Ridder, Geert},
+  title   = {Efficient Estimation of Average Treatment Effects Using the Estimated Propensity Score},
+  journal = {Econometrica},
+  volume  = {71},
+  number  = {4},
+  pages   = {1161--1189},
+  year    = {2003},
+  doi     = {10.1111/1468-0262.00442}
+}
+
+@article{parisini2025,
+  author  = {Parisini, Enrico and Chakraborti, Tapabrata and Harbron, Chris and MacArthur, Ben D. and Banerji, Christopher R. S.},
+  title   = {Leakage and Interpretability in Concept-Based Models},
+  journal = {arXiv preprint arXiv:2504.14094},
+  year    = {2025},
+  doi     = {10.48550/arXiv.2504.14094}
+}
+
+@article{espinosa2025leakage,
+  author  = {Espinosa Zarlenga, Mateo and Dominici, Gabriele and Barbiero, Pietro and Shams, Zohreh and Jamnik, Mateja},
+  title   = {Avoiding Leakage Poisoning: Concept Interventions Under Distribution Shifts},
+  journal = {arXiv preprint arXiv:2504.17921},
+  year    = {2025},
+  doi     = {10.48550/arXiv.2504.17921}
+}
+
+@article{ma2026,
+  author  = {Ma, Lei and Boull{\'e}, Nicolas and Yang, Yu-Sen and Wu, Hao and Guo, Ling},
+  title   = {Physics-Guided Correction for Operator Learning under Model Misspecification},
+  journal = {arXiv preprint arXiv:2606.03469},
+  year    = {2026},
+  doi     = {10.48550/arXiv.2606.03469}
+}
+
+@article{interno2026,
+  author  = {Intern{\`o}, Christian and Yamaguchi, Jumpei and Amdahl-Culleton, Loren and Olhofer, Markus and Klindt, David and Hammer, Barbara},
+  title   = {The Observer Effect in World Models: Invasive Adaptation Corrupts Latent Physics},
+  journal = {arXiv preprint arXiv:2602.12218},
+  year    = {2026},
+  doi     = {10.48550/arXiv.2602.12218}
+}
+
+@article{mohan2024,
+  author  = {Mohan, Arvind and Chattopadhyay, Ashesh and Miller, Jonah},
+  title   = {What You See is Not What You Get: Neural Partial Differential Equations and The Illusion of Learning},
+  journal = {arXiv preprint arXiv:2411.15101},
+  year    = {2024},
+  doi     = {10.48550/arXiv.2411.15101}
+}
+
+@inproceedings{takeishi2021,
+  author    = {Takeishi, Naoya and Kalousis, Alexandros},
+  title     = {Physics-Integrated Variational Autoencoders for Robust and Interpretable Generative Modeling},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  volume    = {34},
+  year      = {2021}
+}
+
+@article{yang2025tennet,
+  author    = {Yang, Yue and Lin, Shiang-Tai},
+  title     = {Physics-Embedded Machine Learning Model for Phase Equilibrium Prediction in Multicomponent Systems},
+  journal   = {Journal of Chemical Information and Modeling},
+  year      = {2025},
+  volume    = {65},
+  number    = {19},
+  pages     = {10180--10193},
+  doi       = {10.1021/acs.jcim.5c01804},
+  publisher = {American Chemical Society}
+}
+
+@inproceedings{havasi2022,
+  author    = {Havasi, Marton and Parbhoo, Sonali and Doshi-Velez, Finale},
+  title     = {Addressing Leakage in Concept Bottleneck Models},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  volume    = {35},
+  year      = {2022}
+}
+
+@article{mahinpei2021,
+  author  = {Mahinpei, Anita and Clark, Justin and Lage, Isaac and Doshi-Velez, Finale and Pan, Weiwei},
+  title   = {Promises and Pitfalls of Black-Box Concept Learning Models},
+  journal = {arXiv preprint arXiv:2106.13314},
+  year    = {2021}
+}
+
+@article{margeloiu2021,
+  author  = {Margeloiu, Andrei and Ashman, Matthew and Bhatt, Umang and Chen, Yanzhi and Jamnik, Mateja and Weller, Adrian},
+  title   = {Do Concept Bottleneck Models Learn as Intended?},
+  journal = {arXiv preprint arXiv:2105.04289},
+  year    = {2021}
+}
+
+% Added 2026-08-02 with the external closure anchor (results/published_idac_check).
+% The COSMO-SAC-2002 numbers this paper's closure is scored against, and the source
+% of the PGL6ed infinite-dilution evaluation set (github.com/PGLadmin/PGLWrapper).
+@article{desouza2025cosmosac,
+  author  = {de Souza, Jr., Edgar T. and Alcantara, Murilo L. and Staudt, Paula B.
+             and Coutinho, Jo\~{a}o A. P. and Soares, Rafael de P.},
+  title   = {Development of a {COSMO-SAC} Parametrization with Advanced {QM} Method
+             {TZVPD-FINE}},
+  journal = {Industrial \& Engineering Chemistry Research},
+  year    = {2025},
+  volume  = {64},
+  number  = {29},
+  pages   = {14700--14711},
+  doi     = {10.1021/acs.iecr.5c01146}
+}
+
+% The infinite-dilution activity-coefficient database distributed with PGL6ed, the
+% evaluation set desouza2025cosmosac scores COSMO-SAC on and this work re-scores.
+@book{elliott2023pgl6ed,
+  author    = {Elliott, J. Richard and Diky, Vladimir and Knotts, IV, Thomas A.
+               and Wilding, W. Vincent},
+  title     = {The Properties of Gases and Liquids},
+  edition   = {6},
+  publisher = {McGraw Hill},
+  year      = {2023},
+  isbn      = {9781260116342},
+  note      = {Data and code at \url{https://github.com/PGLadmin/PGLWrapper}}
+}
+
+% Added 2026-08-11 (referee round 6). The article named "the near-ambient Leeds set of Boobier
+% et al." with no reference; this is that set. Verified via Crossref 10.1038/s41467-020-19594-z.
+@article{boobier2020,
+  author  = {Boobier, Samuel and Hose, David R. J. and Blacker, A. John and Nguyen, Bao N.},
+  title   = {Machine learning with physicochemical relationships: solubility prediction in organic solvents and water},
+  journal = {Nature Communications},
+  year    = {2020},
+  volume  = {11},
+  pages   = {5753},
+  doi     = {10.1038/s41467-020-19594-z},
+  url     = {https://doi.org/10.1038/s41467-020-19594-z}
+}
+
+% Added 2026-08-11 (referee round 6). The nearest in-venue neighbour on the infinite-dilution
+% activity-coefficient data type. Verified via Crossref 10.1021/acs.jcim.6c00199.
+@article{wang2026ghgeat,
+  author  = {Wang, Junhao and Ye, JinLin and Zhang, Wei},
+  title   = {{GHGEAT}: {Gibbs--Helmholtz}-Constrained Graph External Attention for Temperature-Dependent Activity Coefficient Prediction at Infinite Dilution},
+  journal = {Journal of Chemical Information and Modeling},
+  year    = {2026},
+  volume  = {66},
+  number  = {7},
+  pages   = {3759--3773},
+  doi     = {10.1021/acs.jcim.6c00199},
+  url     = {https://doi.org/10.1021/acs.jcim.6c00199}
+}
+
+% Verified 2026-08-12 against the RSC listing and the PMC record (PMC11575590): authors, journal,
+% volume, issue, pages. The architectural facts quoted in the text -- Gibbs-Duhem and the
+% pure-component limit hard-coded in the ARCHITECTURE, deep-set permutation symmetry, SMILES-only
+% input, 317,421 DDB points -- are the abstract's own.
+@article{specht2024hanna,
+  author  = {Specht, Thomas and Nagda, Mayank and Fellenz, Sophie and Mandt, Stephan and Hasse, Hans and Jirasek, Fabian},
+  title   = {{HANNA}: hard-constraint neural network for consistent activity coefficient prediction},
+  journal = {Chemical Science},
+  volume  = {15},
+  number  = {47},
+  pages   = {19777--19786},
+  year    = {2024},
+  doi     = {10.1039/D4SC05115G},
+}
+
+% ADDED 2026-08-19.  The direct experimental analogue of this manuscript's substitution result,
+% seven years earlier and in another field: near-exact Reynolds stresses substituted into RANS
+% produce large velocity errors.  Cited in Sec. 3.3 to distinguish the mechanisms, not to agree:
+% their diagnosis is ill-conditioning of the closure map, and the conditioning measurement in that
+% paragraph rules that account out here.  Verified 2026-08-19 against Cambridge Core / arXiv
+% 1803.05581; the published title says "Reynolds-averaged Navier-Stokes", the preprint says "RANS".
+@article{wu2019illconditioned,
+  author  = {Wu, Jinlong and Xiao, Heng and Sun, Rui and Wang, Qiqi},
+  title   = {Reynolds-averaged {Navier--Stokes} equations with explicit data-driven {Reynolds}
+             stress closure can be ill-conditioned},
+  journal = {Journal of Fluid Mechanics},
+  year    = {2019},
+  volume  = {869},
+  pages   = {553--586},
+  doi     = {10.1017/jfm.2019.205}
+}
+
+% ---------------------------------------------------------------------------------------------
+% ADDED 2026-08-19 after an overnight referee report named nine absences.  Every entry below was
+% checked against Crossref or the publisher before being written here -- venue, volume, first page
+% and DOI -- because a fabricated citation in a manuscript about honest reporting is fatal, and
+% three of this file's own entries exist because earlier ones were fabricated.  One item the report
+% asked for (Qiu et al., Front. Chem. Sci. Eng. 20(1), 2026) is NOT here: it could not be confirmed.
+% Two it asked for are deliberately absent: fastsolv is already reference 1 (key osanloo2024), and
+% ref 32 (interno2026) is cited for adapted-representation collapse, which is what that paper
+% reports -- the report's objection to it does not survive reading the sentence it supports.
+% ---------------------------------------------------------------------------------------------
+
+% The paper that introduced concept-bottleneck models, and the earliest report of this
+% manuscript's own phenomenon: Sec. 6.1's control model, a joint bottleneck that heavily
+% prioritises label accuracy over concept accuracy, has "replacing c-hat with the true c at test
+% time slightly increased test error".  The article defined CBMs without citing it and credited
+% the substitution penalty to a 2025 paper: a five-year priority error.
+@inproceedings{koh2020cbm,
+  author    = {Koh, Pang Wei and Nguyen, Thao and Tang, Yew Siang and Mussmann, Stephen and
+               Pierson, Emma and Kim, Been and Liang, Percy},
+  title     = {Concept Bottleneck Models},
+  booktitle = {Proceedings of the 37th International Conference on Machine Learning},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {119},
+  pages     = {5338--5348},
+  year      = {2020}
+}
+
+% Regressing "apparent" sigma-profiles from phase-equilibrium data rather than from quantum
+% chemistry: the pre-ML precedent for an effective profile that beats the reference downstream.
+@article{islam2015apparent,
+  author  = {Islam, Md Rashedul and Chen, Chau-Chyun},
+  title   = {{COSMO-SAC} Sigma Profile Generation with Conceptual Segment Concept},
+  journal = {Industrial \& Engineering Chemistry Research},
+  volume  = {54}, number = {16}, pages = {4441--4454}, year = {2015},
+  doi     = {10.1021/ie503829b}
+}
+
+% A learned sigma-profile from SMILES feeding COSMO-SAC -- the direct methodological predecessor,
+% and it already reports that an activity-coefficient loss on top of a profile loss improves the
+% downstream gamma, which is the supervision half of this manuscript's contrast.
+@article{kang2022surrogate,
+  author  = {Kang, Jia-Lin and Chiu, Chen-Tse and Huang, Jau Shiue and Wong, David Shan-Hill},
+  title   = {A surrogate model of sigma profile and {COSMOSAC} activity coefficient predictions
+             using transformer with {SMILES} input},
+  journal = {Digital Chemical Engineering},
+  volume  = {2}, pages = {100016}, year = {2022},
+  doi     = {10.1016/j.dche.2022.100016}
+}
+
+% Group-contribution prediction of the profile: the pre-neural version of removing the quantum
+% calculation from the pipeline.  The 2009 entry is a three-page note, not a full paper.
+@article{mu2007gc,
+  author  = {Mu, Tiancheng and Rarey, J{\"u}rgen and Gmehling, J{\"u}rgen},
+  title   = {Group contribution prediction of surface charge density profiles for {COSMO-RS(Ol)}},
+  journal = {AIChE Journal},
+  volume  = {53}, number = {12}, pages = {3231--3240}, year = {2007},
+  doi     = {10.1002/aic.11338}
+}
+@article{mu2009gc,
+  author  = {Mu, Tiancheng and Rarey, J{\"u}rgen and Gmehling, J{\"u}rgen},
+  title   = {Group contribution prediction of surface charge density distribution of molecules
+             for {COSMO-SAC}},
+  journal = {AIChE Journal},
+  volume  = {55}, number = {12}, pages = {3298--3300}, year = {2009},
+  doi     = {10.1002/aic.11933}
+}
+
+% How much COSMO-RS accuracy moves with the PROVENANCE of the profile -- the published version of
+% this manuscript's own division of error between the closure and its input.
+@article{mu2007provenance,
+  author  = {Mu, Tiancheng and Rarey, J{\"u}rgen and Gmehling, J{\"u}rgen},
+  title   = {Performance of {COSMO-RS} with Sigma Profiles from Different Model Chemistries},
+  journal = {Industrial \& Engineering Chemistry Research},
+  volume  = {46}, number = {20}, pages = {6612--6629}, year = {2007},
+  doi     = {10.1021/ie0702126}
+}
+
+% The published critical evaluation of the COSMO-SAC variants this manuscript scores against.
+@article{chen2016critical,
+  author  = {Chen, Wei-Lin and Hsieh, Chieh-Ming and Yang, Li and Hsu, Chan-Chia and Lin, Shiang-Tai},
+  title   = {A Critical Evaluation on the Performance of {COSMO-SAC} Models for Vapor--Liquid and
+             Liquid--Liquid Equilibrium Predictions},
+  journal = {Industrial \& Engineering Chemistry Research},
+  volume  = {55}, number = {34}, pages = {9312--9322}, year = {2016},
+  doi     = {10.1021/acs.iecr.6b02345}
+}
+
+% How much the REFERENCE profile itself moves with the quantum-chemistry and solvation choices
+% behind it -- i.e. how imperfect the reference channel of this manuscript is.  Target venue.
+@article{salih2025sigma,
+  author  = {Salih, Fathya Y. M. and Abranches, Dinis O. and Maginn, Edward J. and Col{\'o}n, Yamil J.},
+  title   = {Open-source generation of sigma profiles: impact of quantum chemistry and solvation
+             treatment on machine learning performance},
+  journal = {Digital Discovery},
+  volume  = {4}, number = {10}, pages = {2711--2723}, year = {2025},
+  doi     = {10.1039/d5dd00087d}
+}
+
+% Two more learned-sigma-profile networks; the second is a message-passing network emitting the
+% profile and the cavity volume, the same architecture class and the same two outputs as the
+% SigmaProfileHead here.
+@article{chen2021transformer,
+  author  = {Chen, Guzhong and Song, Zhen and Qi, Zhiwen},
+  title   = {Transformer-convolutional neural network for surface charge density profile
+             prediction: Enabling high-throughput solvent screening},
+  journal = {Chemical Engineering Science},
+  volume  = {246}, pages = {117002}, year = {2021},
+  doi     = {10.1016/j.ces.2021.117002}
+}
+@article{zhang2022mpnn,
+  author  = {Zhang, Jun and Wang, Qin and Shen, Weifeng},
+  title   = {Message-passing neural network based multi-task deep-learning framework for
+             {COSMO-SAC} based sigma-profile and {VCOSMO} prediction},
+  journal = {Chemical Engineering Science},
+  volume  = {254}, pages = {117624}, year = {2022},
+  doi     = {10.1016/j.ces.2022.117624}
+}
+
+% The estimator this manuscript's pre-declared cross-fitted bound is an instance of; that section
+% currently cites nothing at all.  Closes the Hirano-Imbens-Ridder / Robins-Ritov pair already here.
+@article{chernozhukov2018dml,
+  author  = {Chernozhukov, Victor and Chetverikov, Denis and Demirer, Mert and Duflo, Esther and
+             Hansen, Christian and Newey, Whitney and Robins, James},
+  title   = {Double/debiased machine learning for treatment and structural parameters},
+  journal = {The Econometrics Journal},
+  volume  = {21}, number = {1}, pages = {C1--C68}, year = {2018},
+  doi     = {10.1111/ectj.12097}
+}
+
+% Built on the same corpus this manuscript uses (BigSolDB), shares two authors with the BigSolDB
+% paper already cited, and recalibrates the aleatoric floor to 0.106 log S -- arguing the 0.6-0.8
+% inter-laboratory figure this manuscript quotes is worst-case rather than expected disagreement.
+@misc{sc3benchmark,
+  author       = {Ramani, Vansh and Arora, Har Ashish and Kuchhal, Dhairya and Tatarin, Sergei and
+                  Krasnov, Lev and Ranu, Sayan and Karmakar, Tarak},
+  title        = {{SC3}: The Multi-Solvent Solubility Challenge and Benchmark},
+  year         = {2026},
+  eprint       = {2606.07656},
+  archivePrefix = {arXiv}
+}
+
+% VERIFIED AGAINST CROSSREF 2026-08-20 before it was written, as every entry in this file is:
+% DOI 10.1021/acs.jcim.6c00514 returns exactly these authors, this journal, 66(6) 2951-2954, 2026.
+% NOTE THE TITLE.  It was proposed to us as a paper on "data set contracts"; that is its subject,
+% not its title, and citing the paraphrase would have been a fabricated reference that resolves.
+@article{nael2026dataset,
+  author  = {Nael, Manal A. and Alakonda, Laxman M. and Elokely, Khaled M.},
+  title   = {Defining the Data set Defines the {QSAR} Claim},
+  journal = {Journal of Chemical Information and Modeling},
+  year    = {2026},
+  volume  = {66},
+  number  = {6},
+  pages   = {2951--2954},
+  doi     = {10.1021/acs.jcim.6c00514}
+}
+
+@article{bemis1996,
+  author  = {Bemis, Guy W. and Murcko, Mark A.},
+  title   = {The Properties of Known Drugs. 1. Molecular Frameworks},
+  journal = {J. Med. Chem.},
+  volume  = {39},
+  number  = {15},
+  pages   = {2887--2893},
+  year    = {1996},
+  doi     = {10.1021/jm9602928},
+}
