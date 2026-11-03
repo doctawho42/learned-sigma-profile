@@ -50,6 +50,11 @@ CHANGED_HERE = {
         "removed, together with the constant naming that path; nothing in this repository "
         "supplies the file, and the journal style the figure needs is applied by "
         "scripts/analysis/acs_figure_style.py in the same place",
+    "tests/test_mobile_h_tautomer_resolution.py":
+        "the check that runs over the cached infinite-dilution tables was removed, "
+        "because those tables are third party and this package distributes only the "
+        "processed split; what is kept is the half that needs no data, and the "
+        "over-the-data invariant runs in the development tree instead",
     "tests/test_manuscript_numbers_bind.py":
         "a module-level skip was added, because the manuscript sources this file reads are "
         "added to this repository when the article is submitted; see paper/README.md. Without "

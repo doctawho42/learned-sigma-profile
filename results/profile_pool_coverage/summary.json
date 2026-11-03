@@ -1,0 +1,90 @@
+{
+  "what": "both-sides reference-profile coverage of the labelled test rows, by pool",
+  "match_rule": "InChIKey on solute and solvent at once",
+  "pubchemqc_source": "10.5281/zenodo.20672192",
+  "n_labelled_test_rows": 5608,
+  "n_test_solutes": 147,
+  "n_test_solvents": 70,
+  "pools": {
+    "ud_vt2005": {
+      "pool_size": 2262,
+      "n_matched_rows": 437,
+      "n_solutes": 11,
+      "n_solvents": 23,
+      "n_pairs": 57,
+      "cells": {
+        "solute_yes_solvent_yes": {
+          "rows": 437,
+          "solutes": 11
+        },
+        "solute_yes_solvent_no": {
+          "rows": 9,
+          "solutes": 2
+        },
+        "solute_no_solvent_yes": {
+          "rows": 4989,
+          "solutes": 135
+        },
+        "solute_no_solvent_no": {
+          "rows": 173,
+          "solutes": 19
+        }
+      }
+    },
+    "pubchemqc_cosmo": {
+      "pool_size": 334714,
+      "n_matched_rows": 941,
+      "n_solutes": 23,
+      "n_solvents": 36,
+      "n_pairs": 118,
+      "cells": {
+        "solute_yes_solvent_yes": {
+          "rows": 941,
+          "solutes": 23
+        },
+        "solute_yes_solvent_no": {
+          "rows": 11,
+          "solutes": 2
+        },
+        "solute_no_solvent_yes": {
+          "rows": 4496,
+          "solutes": 123
+        },
+        "solute_no_solvent_no": {
+          "rows": 160,
+          "solutes": 18
+        }
+      }
+    }
+  },
+  "pool_sizes": {
+    "pubchemqc_cosmo": {
+      "n_rows": 361583,
+      "heavy_atoms_median": 15.0,
+      "heavy_atoms_max": 19,
+      "mw_median": 212.22572,
+      "mw_max": 249.99584,
+      "share_over_25_heavy_atoms": 0.0
+    }
+  },
+  "test_solute_size_by_coverage": {
+    "missing": {
+      "n": 124,
+      "heavy_atoms_median": 25.0,
+      "heavy_atoms_min": 10,
+      "heavy_atoms_max": 85,
+      "mw_median": 364.4
+    },
+    "covered": {
+      "n": 23,
+      "heavy_atoms_median": 14.0,
+      "heavy_atoms_min": 5,
+      "heavy_atoms_max": 18,
+      "mw_median": 180.2
+    }
+  },
+  "test_solvents_covered": {
+    "n_total": 70,
+    "n_covered": 60
+  }
+}

@@ -10,7 +10,7 @@ the slot of a physical quantity are that quantity. Every figure, table and numbe
 produced by a script in this repository from a file in it.
 
 This repository is not the development tree. It holds what the manuscript uses and nothing else,
-and three checks in `tools/` make that statement testable rather than editorial.
+and four checks in `tools/` make that statement testable rather than editorial.
 
 ## Quick start
 

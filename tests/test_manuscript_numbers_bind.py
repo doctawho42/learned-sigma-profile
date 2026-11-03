@@ -244,3 +244,83 @@ def test_si_pka_sweep_numbers_come_from_the_probe_deposit():
     assert all(r["b_clos_true"] == 0.0 for r in ins), (
         "the Supporting Information says the relation's own error is zero throughout this sweep"
     )
+
+
+def test_si_pool_coverage_numbers_come_from_the_coverage_deposit():
+    """The Supporting Information replaced an inference with eleven measured coverage numbers.
+
+    The paragraph used to argue from the solute margin alone that enlarging the profile database
+    would not grow the matched set. It now states what a 148-fold larger pool actually buys, so
+    every figure in it is bound to the deposit that produced it. The ratios are checked as
+    ratios rather than re-derived, because the sentence claims the ratio.
+    """
+    d = dep("results/profile_pool_coverage/summary.json")
+    ud, pqc = d["pools"]["ud_vt2005"], d["pools"]["pubchemqc_cosmo"]
+    size = d["pool_sizes"]["pubchemqc_cosmo"]
+    sol = d["test_solute_size_by_coverage"]
+
+    m = find(r"at \$(\d+)\$ distinct molecules, which is \$(\d+)\$ times the deposited compound "
+             r"list, joint coverage of the \$(\d+)\$ labelled test rows grows from \$(\d+)\$ rows "
+             r"over \$(\d+)\$ of the \$(\d+)\$ test solutes to \$(\d+)\$ rows over \$(\d+)\$", SI)
+    assert int(m.group(1)) == pqc["pool_size"]
+    assert int(m.group(2)) == round(pqc["pool_size"] / ud["pool_size"])
+    assert int(m.group(3)) == d["n_labelled_test_rows"]
+    assert int(m.group(4)) == ud["n_matched_rows"]
+    assert int(m.group(5)) == ud["n_solutes"]
+    assert int(m.group(6)) == d["n_test_solutes"]
+    assert int(m.group(7)) == pqc["n_matched_rows"]
+    assert int(m.group(8)) == pqc["n_solutes"]
+
+    m = find(r"A pool \$(\d+)\$ times larger buys a matched set \$(\d+\.\d)\$ times larger", SI)
+    assert int(m.group(1)) == round(pqc["pool_size"] / ud["pool_size"])
+    assert float(m.group(2)) == round(pqc["n_matched_rows"] / ud["n_matched_rows"], 1)
+
+    # the size control: the cap, and that the solutes it misses are the bigger ones
+    m = find(r"stops below \$(\d+)\$\\,Da and \$(\d+)\$ heavy atoms, while the \$(\d+)\$ test "
+             r"solutes it does not hold carry a median of \$(\d+)\$ heavy atoms against \$(\d+)\$ "
+             r"for the \$(\d+)\$ it does", SI)
+    assert size["mw_max"] < int(m.group(1)), "the stated ceiling is not above the pool's own max"
+    assert int(m.group(2)) == size["heavy_atoms_max"]
+    assert int(m.group(3)) == sol["missing"]["n"]
+    assert int(m.group(4)) == round(sol["missing"]["heavy_atoms_median"])
+    assert int(m.group(5)) == round(sol["covered"]["heavy_atoms_median"])
+    assert int(m.group(6)) == sol["covered"]["n"]
+    assert sol["missing"]["heavy_atoms_median"] > sol["covered"]["heavy_atoms_median"], (
+        "the paragraph claims the missing solutes are the bigger ones"
+    )
+
+    # which side binds
+    m = find(r"Of the labelled rows \$(\d+)\$ fail on the solute alone while \$(\d+)\$ of the "
+             r"\$(\d+)\$ test solvents are covered", SI)
+    assert int(m.group(1)) == pqc["cells"]["solute_no_solvent_yes"]["rows"]
+    assert int(m.group(2)) == d["test_solvents_covered"]["n_covered"]
+    assert int(m.group(3)) == d["test_solvents_covered"]["n_total"]
+
+
+def test_si_matched_set_counts_come_from_the_inchikey_deposit():
+    """The 298 K matched set, and the claim that the two match rules now agree.
+
+    The agreement is the whole point of the sentence: before the mobile-hydrogen repair the two
+    rules differed by 25 pairs, and a paragraph that says they agree has to fail if they stop
+    agreeing.
+    """
+    sets = dep("results/b_insuff/inchikey_matched_decomposition.json")["sets"]
+    by = {s["label"]: s for s in sets}
+    smiles = by["canonical SMILES (reported)"]
+    inchikey = by["InChIKey (looser)"]
+
+    m = find(r"At \$298\$\\,K it holds \$(\d+)\$ pairs over \$(\d+)\$ solutes and \$(\d+)\$ "
+             r"solvents, and matching on RDKit canonical SMILES and on InChIKey return the "
+             r"same set", SI)
+    assert int(m.group(1)) == smiles["n_pairs"]
+    assert int(m.group(2)) == smiles["n_solutes"]
+    assert int(m.group(3)) == smiles["n_solvents"]
+    for field in ("n_pairs", "n_solutes", "n_solvents"):
+        assert smiles[field] == inchikey[field], (
+            f"the two match rules disagree on {field} ({smiles[field]} vs {inchikey[field]}), "
+            "so the Supporting Information's claim that they return the same set is false"
+        )
+
+    m = find(r"and \$(\d+)\$ records then failed to match a profile that was present under the "
+             r"amide form", SI)
+    assert int(m.group(1)) == 27, "the repair script reports 27 affected IDAC records"

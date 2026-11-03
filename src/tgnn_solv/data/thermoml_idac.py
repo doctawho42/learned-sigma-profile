@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -11,6 +12,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 from rdkit import Chem
+from rdkit.Chem.MolStandardize import rdMolStandardize
 
 from .utils import canonicalize
 
@@ -116,7 +118,7 @@ def _compound_lookup(record: dict[str, Any]) -> dict[int, dict[str, Any]]:
         inchi = compound.get("sStandardInChI")
         smiles = None
         if isinstance(inchi, str) and inchi.strip():
-            mol = Chem.MolFromInchi(inchi)
+            mol = _mol_from_inchi(inchi)
             if mol is not None:
                 smiles = canonicalize(Chem.MolToSmiles(mol, canonical=True))
         lookup[org_num] = {
@@ -127,6 +129,34 @@ def _compound_lookup(record: dict[str, Any]) -> dict[int, dict[str, Any]]:
             "formula": compound.get("sFormulaMolec"),
         }
     return lookup
+
+
+#: A standard InChI whose /h layer carries a mobile-hydrogen group, e.g. ``(H2,2,3)``, does NOT
+#: determine which tautomer is meant; the hydrogens are declared as shared between the listed
+#: atoms. ``MolFromInchi`` must still return one structure, and the one it picks is not the
+#: chemically dominant form: formamide comes back as the imidic acid ``N=CO`` rather than ``NC=O``,
+#: N-methylformamide as ``CN=CO``, and caprolactam as the lactim ``OC1=NCCCCC1``. Everything
+#: downstream keys on canonical SMILES, so those records silently fail to match a reference profile
+#: that is present under the amide form -- 27 IDAC records lost formamide and N-methylformamide
+#: that way, against molecules present in VT-2005.
+_MOBILE_H = re.compile(r"/h[^/]*\(H")
+_TAUTOMERS = rdMolStandardize.TautomerEnumerator()
+
+
+def _mol_from_inchi(inchi: str) -> Chem.Mol | None:
+    """Parse a standard InChI, resolving a mobile-hydrogen layer to the canonical tautomer.
+
+    The tautomer canonicalisation runs ONLY where the InChI leaves the tautomer open. Where the
+    /h layer fixes the hydrogens the structure is already determined, and rewriting it would change
+    molecules this function has no licence to change.
+    """
+    mol = Chem.MolFromInchi(inchi)
+    if mol is None or not _MOBILE_H.search(inchi):
+        return mol
+    try:
+        return _TAUTOMERS.Canonicalize(mol)
+    except Exception:
+        return mol
 
 
 def _property_metadata(property_node: dict[str, Any]) -> dict[str, Any] | None:

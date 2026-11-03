@@ -1,0 +1,55 @@
+{
+  "what": "VT-2005-matched decomposition under the canonical-SMILES and InChIKey match rules",
+  "cell": {
+    "bins": 8,
+    "unit": "pair",
+    "temperature_K": 298.15
+  },
+  "sets": [
+    {
+      "label": "canonical SMILES (reported)",
+      "n_pairs": 85,
+      "n_solutes": 46,
+      "n_solvents": 19,
+      "res": {
+        "mse": 1.2432,
+        "b_insuff_up": 0.6195,
+        "margin": 0.0041,
+        "b_insuff_up_ml": 0.5615,
+        "margin_ml": 0.1201
+      },
+      "full": {
+        "mse": 1.5943,
+        "b_insuff_up": 0.5378,
+        "margin": 0.5187,
+        "b_insuff_up_ml": 0.4884,
+        "margin_ml": 0.6176
+      }
+    },
+    {
+      "label": "InChIKey (looser)",
+      "n_pairs": 85,
+      "n_solutes": 46,
+      "n_solvents": 19,
+      "res": {
+        "mse": 1.2432,
+        "b_insuff_up": 0.6195,
+        "margin": 0.0041,
+        "b_insuff_up_ml": 0.5615,
+        "margin_ml": 0.1201
+      },
+      "full": {
+        "mse": 1.5943,
+        "b_insuff_up": 0.5378,
+        "margin": 0.5187,
+        "b_insuff_up_ml": 0.4884,
+        "margin_ml": 0.6176
+      }
+    }
+  ],
+  "delta_margin": {
+    "res": 0.0,
+    "full": 0.0
+  },
+  "sign_unchanged": true
+}

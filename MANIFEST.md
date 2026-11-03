@@ -42,7 +42,7 @@ font limits.
 
 ## Every deposited file
 
-Seventeen files, each read by at least one script above, which `tools/check_inputs_present.py`
+Nineteen files, each read by at least one script above, which `tools/check_inputs_present.py`
 verifies.
 
 | File | What it holds | Where it comes from |
@@ -63,6 +63,8 @@ verifies.
 | `results/e5_sigma_grounding/section_s1_channel_split.json` | the solubility effect of substitution, split by which component was replaced, per seed | `scripts/analysis/run_paradox_channel_split.py` over the runs of record |
 | `results/donor_window_rescore/per_solvent.csv` | the donor-window rescoring per solvent | `scripts/analysis/run_donor_window_rescore.py` |
 | `results/pka_hammett/probe.json` | the semi-synthetic Hammett sweep behind the Supporting Information figure: the error of the fixed relation given the true constant, and the cost of supplying that constant, at each setting of the two knobs | `scripts/analysis/run_pka_hammett_probe.py`, deterministic from `--seed 0` with no external input |
+| `results/b_insuff/inchikey_matched_decomposition.json` | the matched set at 298 K under both match rules, which the Supporting Information quotes to state that the two now return the same set | produced in the development tree over the ThermoML table, which is third party and not redistributed here, so this package carries the result rather than the producer. The decomposition fields beside the counts belong to earlier work and this manuscript makes no claim from them |
+| `results/profile_pool_coverage/summary.json` | what a larger reference-profile database buys: both-sides coverage of the labelled test rows under the deposited compound list and under PubChemQC COSMO, with the 2×2 over the two components and the pool's own size range | `scripts/analysis/run_profile_pool_coverage.py`. Neither pool is redistributed here; the second is Zenodo `10.5281/zenodo.20672192` |
 | `results/closure_ladder/placebo_profile_diagnosis.csv` | donor-window and total cavity area per solvent, in the reference tabulation and in the learned profile, as medians over that solvent's rows | a deposit step of an earlier closure-damage study. That study's own claim, that the severity of closure damage orders the substitution penalty, did not hold and is not made in this manuscript. This file carries none of it: it is a direct read of the two profile arrays, window by window. |
 
 ## The runs of record
