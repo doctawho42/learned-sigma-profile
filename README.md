@@ -65,11 +65,12 @@ documents how that table was built from the database.
 The trained checkpoints and the data split are too large for version control and are archived with
 this package instead. `tools/fetch_artifacts.py` downloads and verifies them.
 
-## The three checks
+## The four checks
 
 ```bash
 python tools/check_clean.py                               # documentation, not a work diary
 python tools/check_inputs_present.py                      # complete, and no larger than needed
+python tools/check_si_contract.py                         # the SI holds what the article promises
 python tools/check_code_unchanged.py --source /path/to/development/tree
 ```
 
@@ -84,6 +85,11 @@ present here, to arrive from the archive, to be created at run time by a named s
 configuration default this manuscript does not exercise. It then requires every deposited file to
 be read by some script here. The first half is completeness, the second is minimality, and a
 declaration that stops matching the code is reported as stale.
+
+`check_si_contract.py` reads the article's Supporting Information section as a contract, one
+promise per semicolon, and requires the Supporting Information to have exactly those sections in
+exactly that order. A section with no promise and a promise with no section both fail, so neither
+document can drift away from the other.
 
 `check_code_unchanged.py` compares this repository's Python against the development tree and
 requires that nothing differ in executable structure except where a reason is recorded in the

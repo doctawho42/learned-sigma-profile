@@ -35,6 +35,7 @@ ROOT = Path(__file__).resolve().parents[1]
 #: Files that exist only here and have no counterpart to compare against.
 NEW_HERE = {"tools/check_clean.py", "tools/check_code_unchanged.py",
             "tools/check_inputs_present.py", "tools/fetch_artifacts.py",
+            "tools/check_si_contract.py",
             "tests/test_package_is_self_contained.py"}
 
 #: Files whose executable structure is deliberately different here, each with the reason.

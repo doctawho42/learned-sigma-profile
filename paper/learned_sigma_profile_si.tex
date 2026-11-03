@@ -1,0 +1,42 @@
+% Supporting Information for learned_sigma_profile.tex. Compiled with XeLaTeX, twice.
+%
+% SCOPE. This document holds the five items the article's "Supporting Information Available"
+% section names, and nothing else. Each section below answers one of them, in that order.
+% The rule for admission is that a section is either pointed to by the article or needed to
+% reproduce a reported number; tools/check_si_contract.py enforces it.
+%
+% The Supporting Information of the previous submission (grounding_paradox_si.tex) belongs to
+% a different argument and is left untouched.
+\documentclass[journal=jcisd8,manuscript=suppinfo,layout=twocolumn]{achemso}
+\input{preamble}
+\externaldocument[][nocite]{learned_sigma_profile}
+
+\title{Supporting Information: When a Learned $\sigma$-Profile Is Not One: Diagnosing the
+Intermediate of a Physics-Embedded Solubility Model}
+
+\author{N.~L. Polomoshnov}
+\affiliation[MSU]{Faculty of Bioengineering and Bioinformatics, Lomonosov Moscow State
+University, Moscow, Russia}
+\alsoaffiliation[IBMC]{V.~N. Orekhovich Institute of Biomedical Chemistry, Moscow, Russia}
+\email{nikitapol@fbb.msu.ru}
+\author{A.~V. Rudik}
+\affiliation[IBMC]{V.~N. Orekhovich Institute of Biomedical Chemistry, Moscow, Russia}
+
+\begin{document}
+
+\maketitle
+
+\noindent This document supports the article in five parts, in the order its Supporting
+Information section lists them: the architecture and the training schedule (\S\ref{si:arch}); the
+data, the splits and the auxiliary supervision streams (\S\ref{si:data}); the reading rule declared
+for each measurement before it was made, with its outcome (\S\ref{si:rules}); what the observations
+leave undetermined, which is the premise the measurements rest on (\S\ref{si:unresolved}); and a
+second system in which a linear free-energy relation stands in for the closure (\S\ref{si:second}).
+Every number here is produced by a named script in the deposited repository from a named file in
+it; the mapping is \texttt{MANIFEST.md} in that repository.
+
+\input{sections/si-v2}
+
+\bibliography{references_verified}
+
+\end{document}

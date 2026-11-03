@@ -1,0 +1,435 @@
+% Body of learned_sigma_profile_si.tex. Five sections, one per item of the article's
+% "Supporting Information Available" list, in that order.
+
+\section{Architecture and training}
+\label{si:arch}
+
+\paragraph{The model.}
+A shared message-passing encoder embeds the solute and the solvent graphs: hidden width $64$ over
+$3$ message-passing layers on $35$-dimensional node and $8$-dimensional edge features, with a
+two-layer residual role-specific branch. A set2set readout with $3$ processing steps pools each
+graph, the two pass through a three-layer cross-attention block, and the $512$-dimensional pair
+representation $[\,g_s,\,g_v,\,g_s\!\odot g_v,\,|g_s-g_v|\,]$, with dropout $0.012$, feeds both
+heads. The model has $5.40$M trainable parameters.
+
+The crystal head predicts $\Tm=100+600\,\mathrm{logistic}(\cdot)\in[100,700]$\,K and
+$\dHfus=S_H\,\mathrm{softplus}(\cdot)$, giving the ideal term $\Phicry(T)$ of
+equation~\eqref{eq:sle}; the group-contribution $\Tm$ prior is affine-calibrated on the training
+split before entering the head. The $\sigma$-profile head is a feed-forward network on the same
+pair representation, ending in a normalised non-negative vector of $51$ bins.
+
+The repository carries two further encoder backbones, a graph transformer and a variant that splits
+messages into dispersive, polar and hydrogen-bonding channels. Neither is used by any run reported
+here, and no accuracy comparison between backbones is claimed.
+
+\paragraph{The closure, and what it omits.}
+The differentiable COSMO-SAC layer uses the standard VT-2005 / Lin--Sandler constants: effective
+segment area $a_{\mathrm{eff}}=7.5$\,\AA$^2$, electrostatic-misfit constant
+$\alpha'=16466.72$\,kcal\,\AA$^4$\,mol$^{-1}$\,e$^{-2}$, hydrogen-bond coefficient
+$c_{\mathrm{hb}}=85580$ with cutoff $\sigma_{\mathrm{hb}}=0.0084$\,e\,\AA$^{-2}$, coordination
+number $z=10$, and Staverman--Guggenheim normalisers $r_0=66.69$\,\AA$^3$, $q_0=79.53$\,\AA$^2$. The
+$\sigma$-profile grid is $51$ bins on $[-0.025,0.025]$\,e\,\AA$^{-2}$.
+
+The layer runs the residual, segment-activity part of COSMO-SAC alone. The
+Staverman--Guggenheim combinatorial term, the contribution molecular size and shape make to the
+activity coefficient, is omitted, because it is a function of cavity volume and area rather than of
+the profile and so carries no information about the quantity under study. A substitution that
+replaces the profile and leaves the combinatorial term in place would move both terms and the
+attribution would not be clean.
+
+\paragraph{Two fixed points, and the iteration counts they are run at.}
+The pipeline contains two nested fixed points, each with its own iteration count, and the counts
+differ between training and evaluation.
+
+The segment-activity fixed point is damped at $\lambda=0.7$ and run for $16$ iterations at training
+time and $30$ at evaluation. The solid-liquid equilibrium fixed point is the damped map
+$x_2^{(k+1)}=\lambda\exp(-\Phicry(T)-\lng(x_2^{(k)},T))+(1-\lambda)x_2^{(k)}$, run for $5$
+iterations in training and $20$ at evaluation, at the same $\lambda$, which is one configuration
+field read by both loops.
+
+A count is a free parameter between fitting and scoring, so a checkpoint scored at a count far from
+the one it was fitted at is evaluated through an operator it was never fitted against. For the
+checkpoints reported here the exposure is bounded directly. Sweeping the segment count over $8$,
+$16$, $30$, $100$ and $300$ with weights and rows held fixed moves the seed-mean \lnx\ MAE to
+$1.9155$, $1.9195$, $1.9275$, $1.9362$ and $1.9364$, an interval $0.021$ wide in which converging
+the solver makes the arm slightly \emph{worse}. The substituted arm sweeps through the same code on
+the same weights and rows, giving $2.2300$, $2.3061$, $2.3356$, $2.3370$ and $2.3368$ and a
+contrast of $+0.3145$, $+0.3866$, $+0.4081$, $+0.4008$ and $+0.4004$. Between the evaluation count
+and the fixed point the contrast moves $-0.008$, $1.9\%$ of itself, and that movement is not a
+direction: three of five seeds carry its sign, the per-seed range $[-0.031,+0.002]$ spans zero, and
+one seed carries almost all of it.
+
+The aggregate is insensitive because the per-row shifts cancel, not because they are small. At $30$
+iterations the median row moves $5.9\times10^{-4}$ against the converged solve, its ninety-fifth
+percentile $0.136$ and its worst row $2.03$ in \lnx. The two profiles also converge at different
+rates, in the direction the asymmetry predicts: at $30$ iterations the segment residual is a median
+$9.7\times10^{-4}$ with a ninety-fifth percentile of $0.038$ and a worst case of $0.073$ in \lngi\
+on the tabulation, against $2.4\times10^{-3}$, $0.077$ and $0.162$ on the learned profile, so the
+broader learned profile is about twice the slower wherever the residual is large. What the count
+does reach is under-counting: at eight iterations the contrast reads $+0.31$, understating it by
+$0.094$. The exposure is therefore a head scored \emph{below} the count it was fitted at, which is
+not the configuration of any run reported here.
+
+\paragraph{Optimisation and curriculum.}
+Training is a fixed three-phase curriculum: $30$ epochs of auxiliary-property pretraining, $70$ of
+full solid-liquid equilibrium training, and $10$ of low-rate stabilisation, at learning rates
+$2.6\times10^{-4}$, $8.5\times10^{-5}$ and $8.5\times10^{-6}$. The optimiser is Adam with weight
+decay $5\times10^{-4}$, gradient clipping at $2.0$ and batch size $64$.
+
+The direct control shares the encoder, interaction and readout verbatim and emits \lnx\ directly,
+with a thermometer encoding of temperature in place of the dependence the physics arm receives
+through $\Phicry(T)$ and the closure. It was tuned separately: dropout $0.174$ against $0.012$,
+second-phase learning rate $8.6\times10^{-4}$ against $8.5\times10^{-5}$, weight decay
+$4.2\times10^{-5}$ against $5\times10^{-4}$, gradient clipping $2.54$ against $2.0$, over $110$
+epochs equal to the physics arm's total budget at the same width and depth. Width, depth, batch
+size and epoch budget are matched and the optimisation is not, so any difference between the two
+arms is a difference between two separately tuned pipelines and is not attributable to the
+thermodynamic bottleneck alone. A hyperparameter-matched control was not run.
+
+\paragraph{Objective.}
+The objective is a weighted sum. Its registry holds $32$ terms, of which $17$ are hard-wired to
+zero and two more default to zero through the configuration: disabled experimental scaffolding,
+released with the code so that a reader of the configuration can see what is off.
+Table~\ref{tab:si-loss} lists the terms carrying a non-zero default weight, together with the
+$\sigma$-profile earth-mover term, which is applied outside the registry when the grounding stream
+is on. Per-phase weight overrides are pinned in each run's resolved configuration, which is
+deposited with the checkpoint.
+
+\begin{table*}[t]
+\centering
+{\footnotesize
+\begin{tabular}{@{}llr@{}}
+\toprule
+role & term & default wt. \\
+\midrule
+task                  & solubility (bin-weighted Huber on \lnx)   & $1.0$ \\
+crystal grounding     & melting point $\Tm$                       & $0.3$ \\
+                      & fusion enthalpy $\dHfus$                  & $0.3$ \\
+activity grounding    & infinite-dilution \lngi                   & $0.5$ \\
+                      & finite-composition \lng                   & $0.5$ \\
+                      & Hansen parameters                         & $0.2$ \\
+                      & $\sigma$-profile earth-mover              & stream \\
+regulariser           & solubility monotonicity in $T$            & $0.1$ \\
+                      & physics preference                        & $0.1$ \\
+                      & adaptive-correction residual              & $0.01$ \\
+                      & NRTL $\tau$                               & $0.01$ \\
+control coupling      & direct-arm negative log-likelihood        & $0.2$ \\
+                      & direct-arm regulariser                    & $0.05$ \\
+architecture          & mixture-of-experts balance                & $0.02$ \\
+\bottomrule
+\end{tabular}}
+\caption{Loss terms with a non-zero default weight. The $\sigma$-profile earth-mover term is not a
+registry entry and is active only while the grounding stream is on. A further $17$ registered terms
+are hard-wired to zero.}
+\label{tab:si-loss}
+\end{table*}
+
+\paragraph{The activity-model variants that are not reported.}
+The code implements two further activity models as controls: a fitted NRTL excess-Gibbs-energy
+model, and its symmetric one-parameter collapse in which the two interaction parameters are tied to
+a single predicted $\lngi$. Neither is used by any measurement in the article, which concerns the
+$\sigma$-profile and therefore requires the profile-based closure. Their weights were not retained,
+and no comparison between them and the COSMO-SAC arms is made here: the arms were separately tuned,
+and a difference between separately tuned pipelines is not a property of the activity model.
+
+
+\section{Data, splits and the auxiliary supervision streams}
+\label{si:data}
+
+\paragraph{Sources.}
+Solubility is BigSolDB~2.0 \cite{krasnov2025bigsoldb}. Crystal $\Tm$ and $\dHfus$ come from an open
+melting-point pool together with a group-contribution prior; melting-point tables are auto-detected
+as degrees Celsius or kelvin, because a double conversion of an already-absolute table shifts every
+$\Tm$ by $+273$\,K and $\Tm$ enters the ideal term directly. Reference $\sigma$-profiles are the
+VT-2005 compilation \cite{mullins2006} as redistributed with Ref.~\cite{bell2020cosmosac}, ingested
+to $1432$ compounds together with the COSMO cavity volume. Infinite-dilution activity coefficients
+are from ThermoML \cite{frenkel2011thermoml}. The acid-dissociation data of \S\ref{si:second} are
+the OPERA compilation \cite{mansouri2019opera}, $7904$ records, from which a uniform
+net-formal-charge filter leaves $1004$ rows amenable to a Hammett treatment, $158$ meta or para and
+$846$ ortho or heteroaromatic.
+
+The reference profiles are computed for a single conformer and protonation state. Mismatch between
+that state and the one a measurement was made in is error in the reference, and it is not signed:
+it displaces the quantity every departure in the article is measured against. The article therefore
+compares the learned profile with one tabulation throughout and makes no claim about the tabulation
+itself.
+
+\paragraph{Coverage, and why the matched set is small.}
+The set on which a learned profile and a reference profile can both be scored against a measured
+activity coefficient is limited by the intersection of the two, not by either alone. Of the
+ThermoML pairs at $298$\,K, only two solutes lack a VT-2005 profile while their solvent has one, so
+enlarging the profile database would not materially grow the matched set; the binding constraint is
+joint coverage. Matching by RDKit canonical SMILES on both components gives $60$ pairs at $298$\,K
+over $41$ solutes and $17$ solvents. Matching by InChIKey instead admits $85$ pairs, at the cost of
+importing a profile across a tautomer or protonation variant, which is the same mismatch named
+above; the article uses the stricter rule, so that the profile charged against a label is the one
+the pipeline would actually supply.
+
+\paragraph{The split.}
+The split is by Bemis--Murcko scaffold \cite{bemis1996}: molecules are grouped by ring system plus
+linker with side chains stripped, and no scaffold appears in more than one partition. Every test
+metric in the article is computed on the $5608$ labelled test rows, which span $147$ solutes.
+
+The seeded split is not stable across versions of the data-preparation code. Regenerating it
+reshuffles which scaffolds land in the test partition, which orphans every checkpoint and every
+number measured on the previous split. All numbers in this work are therefore computed on a single
+pinned split, whose per-file SHA-256 each run manifest records and whose files are deposited with
+the checkpoints rather than regenerated.
+
+\paragraph{The auxiliary supervision streams.}
+An auxiliary stream is a sidecar table in the processed-dataset format whose rows are
+self-solvent, carry no solubility label, and switch on the mask of one target only. Two streams
+feed the runs reported here: a crystal stream carrying melting points, and a $\sigma$-profile
+stream carrying reference profiles. A stream builder applies two guards and reports both in its
+build summary. The first excludes any pool molecule whose Bemis--Murcko scaffold appears in the
+validation or test partition, and aborts rather than proceed if a split file is missing. The second
+reports how many pool molecules are not already labelled for that target in the training partition,
+by canonical SMILES, because a stream that is mostly duplicates tests nothing and the null it
+produces would be read as evidence that grounding does not help.
+
+\paragraph{One build violated the first guard, and the exposure it leaves.}
+A correct build of the $\sigma$-stream retains $1319$ of the $1427$ VT-2005 molecules that parse
+into the pool. The stream file was at one point rebuilt with the exclusion pointed at the splits of
+a small debug dataset, and that build carries $1425$ rows, of which $106$ have a scaffold in the
+real test and validation union. The overlap is not confined to scaffold relatives: $91$ of those
+rows are themselves held-out solutes by canonical SMILES.
+
+What a leak can act on is the labelled test set, and there the exposure is smaller than those
+counts suggest. Of the $147$ labelled test solutes, $7$ have their own reference profile in the
+defective stream and $8$, those $7$ among them, have a scaffold relative in it: $297$ and $351$ of
+the $5608$ rows, $5.3\%$ and $6.3\%$. For a scaffold split, solute coverage rather than row
+fraction is the load-bearing statistic. The correctly guarded build leaves none of either. The
+crystal stream's build on disk records the correct exclusion, so among the streams feeding these
+runs the defect is confined to the $\sigma$ one.
+
+Per-run stream provenance was not logged. The deposited artifacts therefore cannot certify which
+build fed which arm, and the disclosure above is the bound rather than an attribution. The runner
+now records the stream hash alongside the split hash so that future runs are auditable directly.
+
+\paragraph{Compute and determinism.}
+The five checkpoints of record were trained on one machine from one commit, at seeds $42$ to $46$;
+each manifest records the commit, the configuration, the seed and the environment. Retraining the
+same arm on a different GPU architecture does not reproduce a checkpoint to within seed spread, so
+a comparison of two checkpoints should be read against the hardware each was trained on. Analysis
+is deterministic given a checkpoint and a seed, and every quantity reported in the article is a
+median or a range over the five seeds.
+
+
+
+\section{The control for each measurement}
+\label{si:rules}
+
+A contrast of this kind is interpretable only against something that would have come out
+differently had the instrument been responding to something else. This section states, for each
+row of Table~\ref{tab:battery}, what that control is and what outcome from it would have refuted
+the reading. Each control is part of the measurement: the script that produces a deposit computes
+its control in the same pass, over the same rows and the same weights, so the two cannot drift
+apart. None of these is a pre-registration, with the one exception named at the end.
+
+\paragraph{Does the observable determine the $\sigma$-profile?}
+Control: the same Jacobian spectrum computed on random profiles carrying the same total area. The
+reading is that the deficiency belongs to the closure as a map rather than to the trained head, so
+it is the control's \emph{agreement} that supports it. A control resolving materially more
+directions than the learned profile would refute it, because the restriction would then be
+something the head does. The learned profiles give a median of two directions of fifty for $99\%$
+of the information, range one to five; the random profiles give two.
+
+\paragraph{Does the observable determine the crystal term?}
+Control: the same Cram\'er--Rao bound recomputed with the melting temperature and the enthalpy of
+fusion supplied as independent labels. A bound already tight without them would refute the reading.
+It is $\pm20$\,kJ\,mol$^{-1}$ without and $\pm1.7$ with.
+
+\paragraph{Does the head use the freedom?}
+Control: the share of the molecule's cavity surface each charge-density window holds. A residual
+distributed in proportion to area, that is an enrichment near one in every window, would refute the
+reading that the departure is directed. Over the $71$ molecules of the clean pool the enrichment is
+$3.97$ in the donor window, $2.03$ in the acceptor window and $0.88$ in the nonpolar core as
+solute, and $3.78$, $1.96$ and $0.89$ as solvent.
+
+\paragraph{Is the output layer responsible?}
+Two controls, because the claim is negative and a negative needs both. The first is the smallest
+bin mass the same head reaches anywhere, which bounds what the normalisation makes impossible; the
+second is an untrained head of the same architecture, which gives the pedestal the parameterisation
+produces before any data. A head unable to go far below its pedestal, or an untrained head whose
+pedestal matched the trained one, would refute the reading. The head reaches $10^{-11}$, and the
+untrained pedestal is a median $0.571$ against $0.02$ to $0.03$ trained.
+
+\paragraph{Is the reference state preserved?}
+Control: the same calculation with one profile supplied on both sides, which returns zero
+identically. A control returning anything other than zero would place the deviation in the closure
+rather than in the model, and would refute the reading. It returns zero exactly; the model's own
+two role profiles give a median $|\lng|$ between $0.012$ and $0.044$ across seeds, largest $0.80$.
+
+\paragraph{What does misplaced mass cost, and where?}
+Control: the same per-bin sweep on random profiles of the same total area, which gives the
+edge-to-core ratio a smooth object produces with no chemistry in it. A real-profile ratio inside
+the random profiles' would refute the reading that the cost map is a property of the closure's
+chemistry. The real ratios are $21\times$ and $15\times$ on the two row sets against $1.6\times$
+random.
+
+\paragraph{Does the intermediate decompose?}
+Control: a randomly chosen part of the grid of the same size as the part being substituted, twenty
+draws per seed. If substituting a random part were never worse than substituting none, the parts
+would add and a per-bin attribution would be defined. A random third is worse than the fully
+learned profile in $20\%$ of the $20\times5$ draws.
+
+\paragraph{Where does the error that reaches the closure live?}
+Controls: exact zeros written into the bins where the reference is zero, and a random third of the
+grid, twenty draws per seed. A zero-bin repair recovering a share comparable to the nonzero-bin
+repair would refute the reading that the consequential error is in the occupied bins. The nonzero
+repair recovers $+89\%$ of the gap and the zero repair $-9\%$.
+
+\paragraph{What does supplying the reference profile do?}
+Control: the rows in which no profile is replaced because neither component is tabulated, which
+must not move. Movement there would mean the substitution was reaching rows it does not touch and
+would refute every number read from this contrast. Those rows move by less than
+$4\times10^{-6}$. The activity coefficients improve from $1.75\pm0.06$ to $0.76$ and the solubility
+worsens by $0.43\pm0.04$ over $5274$ rows.
+
+\paragraph{The one measurement with a rule written beforehand.}
+The reference-state test was prompted by a reviewer's observation that a role-dependent profile
+would break $\gamma(i\ \mathrm{in}\ i)=1$. A rule was committed before the quantity was computed,
+six minutes before the result in the repository history, and it reads as follows. The existing
+closure validation cannot see the effect, because it supplies one tabulated profile to both sides
+and so tests the closure rather than the model; under equal profiles $\gamma=1$ holds by
+construction. The model is built with a role-specific branch, so one molecule receives different
+profiles in the two slots, and the quantity to compute is therefore $\lngi$ with the solute-role
+profile in one argument and the solvent-role profile in the other, at $298.15$\,K, with the layer's
+default configuration. The declared control was the one-profile calculation, which must return zero
+exactly; the declared refutation was that control returning anything else, in which case the
+deviation would be the closure's. Both parts were then computed, and both came out as declared.
+
+\section{What the observations leave undetermined}
+\label{si:unresolved}
+
+Every measurement in the article is a statement about what the network puts in a slot the data do
+not fix. This section gives the measurements behind that premise. Both are read against a control,
+because a rank statement on a smooth object is a claim about the object only if the same statement
+fails on a comparable object without the structure asserted.
+
+\paragraph{The profile direction the closure can see.}
+Fix the weights and the rows and perturb the $\sigma$-profile along each of the $51$ grid
+coordinates in turn, recording the response of $\lng$. Over $25$ solvents and five seeds the
+resulting Jacobian spectrum has two of fifty directions carrying $99\%$ of the information, with a
+per-seed range of one to five. The control is the same spectrum computed on random profiles of
+equal total area, and it gives two as well.
+
+That agreement is the result, not a failure of the test. The deficiency is a property of the
+closure as a map from a $51$-bin histogram to one number, not something the trained head does: an
+observation of $\lng$ constrains a two-dimensional shadow of the profile whatever profile is
+supplied. The remaining coordinates are not determined by the solubility data at all, and what the
+head places in them is therefore not decided by fitting.
+
+The resolved direction has a chemical locus as well as a rank. The dominant eigenvector
+concentrates on the extreme-$|\sigma|$ bins on which the closure's hydrogen-bonding term acts, so
+the coordinates the observation leaves free are the nonpolar and weakly polar interior of the
+profile. A complementary measurement at infinite dilution gives the same picture: the aggregate
+activity Fisher matrix $J^{\top}J$ with $J=\partial\lngi/\partial\sigma$ is rank one, and the
+per-molecule Fisher that governs an individual profile has participation ratio about $1.4$ of $51$
+even at full solvent coverage.
+
+Three limits travel with these numbers. The participation ratio is a concentration statistic and
+not an exact count of resolved directions. It must be read against a permuted control rather than
+absolutely, because finite differences decorrelate the redundant flat-profile coordinates and
+inflate it. And it is measured at infinite dilution, so its transfer to the finite-composition
+regime is not established here. None of this says that recovering the tabulated profile is
+impossible in principle; it says the solubility observations do not require it.
+
+\paragraph{The crystal term.}
+The same question for the other head has a closed-form answer. Fit the four parameters of the
+solid-liquid relation to a solubility series and the information matrix has condition number
+$2.3\times10^{5}$: the enthalpy of fusion is collinear with the temperature slope of the activity
+term, so a change in one is absorbed by a change in the other. The Cram\'er--Rao bound that follows
+puts no estimator of $\dHfus$ from a solubility series alone inside $\pm20$\,kJ\,mol$^{-1}$, which
+is wider than the range the quantity takes across these compounds. Supplying the melting
+temperature and the enthalpy of fusion as independent labels reduces that bound to
+$\pm1.7$\,kJ\,mol$^{-1}$.
+
+This is why the crystal properties are supervised externally and why the article's question is
+about the profile rather than the crystal term: the crystal term has an external label, and the
+profile coordinates the closure cannot see do not.
+
+
+\section{A second system: a linear free-energy relation}
+\label{si:second}
+
+The article's measurements are made on one pipeline with one closure, so they cannot say whether
+the behaviour depends on the closure's adequacy. This section reports a second system built so
+that adequacy varies by chemical stratum and is known from structure alone.
+
+\paragraph{Construction.}
+The closure is a fixed Hammett linear free-energy relation,
+$g=\mathrm{p}K_{a,0}-\rho\,\hammett^{\star}$, over a reaction series $s$, which fixes the
+per-scaffold Hansch--Leo--Taft constants $(\mathrm{p}K_{a,0},\rho)$, and a substituent constant
+$\hammett^{\star}$. A network predicts $\hammett^{\star}$ from structure and the prediction is
+pushed through the fixed relation, which is the same arrangement as a $\sigma$-profile pushed
+through COSMO-SAC. The tabulated Hansch--Leo values are the external reference for the predicted
+coordinate, exactly as the VT-2005 table is for the profile. The constant carries its subscript
+throughout so that it is not confused with the screening-charge density of the article.
+
+Assignment is mechanical and reads structure only. Four reaction series are tried in the fixed
+order benzoic acid, phenol, anilinium, pyridinium, and a record enters under the first whose
+ionizing group matches exactly once, at a ring atom lying in exactly one six-membered aromatic
+ring. Ring positions are typed by shortest ring-bond distance from that atom: one bond ortho, two
+meta, three para. The constant $\hammett^{\star}$ is the sum over substituted positions of the
+tabulated Hansch--Leo value for that substituent at that position, from a fixed list of nineteen;
+an unsubstituted parent has $\hammett^{\star}=0$.
+
+\paragraph{Why adequacy varies, and how the strata are defined.}
+The two classical failure modes of a Hammett relation fall on either side of the distinction the
+article draws. Resonance saturation is a curvature in the substituent constant that a linear
+relation structurally cannot represent: a defect of the map. Ortho and steric field effects are
+absent from the tabulated constants altogether: information the intermediate does not carry.
+
+The strata follow from that. A record whose every substituted position is meta or para with a
+tabulated substituent lies where the relation is close to exact. A record carrying an ortho
+substituent, or one outside the tabulated list, lies where it is not; both enter $\hammett^{\star}$
+as zero. The rule is a function of structure and never reads a residual, so the strata cannot be
+chosen by outcome.
+
+\paragraph{Data and one uniform filter.}
+The source is the OPERA compilation \cite{mansouri2019opera}, $7904$ records. A small number are
+supplied as pre-ionized microstates, inconsistent with a neutral-scaffold Hammett assignment, and
+they degrade the well-specified stratum severely. They are removed by one rule applied uniformly to
+both strata, net formal charge different from zero, which never references a residual and so cannot
+be circular, and which keeps net-neutral substituents such as nitro. The filter removes $5$ of
+$163$ rows in the well-specified stratum and $352$ of $1198$ in the other, leaving $1004$
+Hammett-amenable rows, $158$ and $846$.
+
+\paragraph{The comparison, and the result.}
+The physics arm, encoder to $\hat{\hammett}$ to the fixed relation, is trained on $K=20$ stratified
+within-scaffold splits, and the per-molecule error is paired against the deterministic reference
+arm, stratum by stratum. Where the relation is well specified the reference wins: learned MAE
+$0.48\pm0.09$ against $0.315\pm0.07$, a gap of $-0.165$, the reference better in $19$ of $20$
+splits. Where it is not, the reference loses: learned $0.83\pm0.07$ against $1.62\pm0.08$, a gap of
+$+0.79$, the reference worse in $20$ of $20$ splits.
+
+The sign of the effect of supplying the true intermediate therefore follows the adequacy of the
+relation it is supplied to, within one system, under one protocol, with the strata fixed by
+structure.
+
+\paragraph{Three limits.}
+The comparison is within distribution. The companion run on a Bemis--Murcko scaffold split is
+deposited beside it, and there nothing flips: both arms degrade and the learned arm degrades
+further, so the reference helps on both strata. The reason the main comparison is not run on a
+scaffold split is that such a split collapses the well-specified stratum to two ring systems. Every
+solubility result in the article is measured on a scaffold split, so this is the one place the
+protocol differs.
+
+The resampling unit is the reaction series and only four exist, so the cluster bootstrap has $35$
+distinct outcomes and a finest atom of about $0.004$. The interval endpoints quoted above are
+percentiles of that law and are no finer; read as a sign test on four units the two statements are
+$p=1/16$ and $p\approx0.31$. What the result rests on is the consistency of the sign across splits
+and series and the size of the gap in the misspecified stratum, $+0.79$ against a reference error
+of $1.62$, and not on a $P$ value. The refit that would settle the series-level question at four
+units was not run.
+
+Finally, a competence sweep over training fractions $1.0$, $0.5$, $0.25$ and $0.12$, six seeds
+each, shows that the reference side of the comparison is fixed by the stratum and not by the data
+budget: its error is the same at every budget while the learned side moves. In the well-specified
+stratum the learned arm rises from $0.46$ to $0.98$ and never reaches the reference's $0.31$, so
+the reference helps throughout. In the other it stays below the reference's $1.62$ across the whole
+range, $0.85$ at full data and $1.31$ at $12\%$, so the reference hurts throughout. Only scaffold
+extrapolation, where the predicted constant breaks down to $2.6\pm2.0$, pushes it back above and
+reverts the sign, and that reversion is a property of the mean over six splits rather than of each:
+three of the six still have the reference hurting, and the negative mean is carried by two splits.
