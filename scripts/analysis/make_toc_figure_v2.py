@@ -40,7 +40,7 @@ CKPT = ROOT / "checkpoints/e5_leakfree/grounded_a_seed42.pt"
 DEP = ROOT / "results/toc_graphic"
 FIGS = ROOT / "paper/figs"
 
-# обе пары читаются из депозитов; здесь они только названы, чтобы подпись и рисунок не разошлись
+# both pairs are read from deposits; they are named here so caption and figure cannot diverge
 LNG = (1.7511, 0.7650)     # idac_learned_vs_reference: learned -> reference_vt2005, AAD
 LNX = (1.846, 2.252)       # e5_sigma_grounding: grounded_a -> oracle, MAE
 INK, REFC, LRN, GOOD, BAD = "#1a1a1a", "#2166ac", "#b2182b", "#2166ac", "#b2182b"
@@ -49,7 +49,7 @@ INK, REFC, LRN, GOOD, BAD = "#1a1a1a", "#2166ac", "#b2182b", "#2166ac", "#b2182b
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--smiles", default="CC(=O)C", help="молекула (ацетон по умолчанию)")
+    ap.add_argument("--smiles", default="CC(=O)C", help="molecule (acetone by default)")
     ap.add_argument("--name", default="acetone")
     a = ap.parse_args()
 
@@ -60,7 +60,7 @@ def main() -> int:
     table = load_sigma_profiles(str(PROFILES), n_bins=n_bins)
     key = canonicalize(a.smiles)
     if key not in table:
-        raise SystemExit(f"{a.smiles}: эталонного профиля нет в таблице")
+        raise SystemExit(f"{a.smiles}: no reference profile in the table")
     ref = np.asarray(table[key][0], float)
     ref = ref / ref.sum()
 
@@ -69,8 +69,8 @@ def main() -> int:
     _, as_solvent = learned_profiles(model, cfg, [a.smiles], tpl)
     lrn = np.asarray(as_solvent[0], float)
     lrn = lrn / lrn.sum()
-    print(f"{a.name}: эталон нулевой в {int((ref == 0).sum())} бинах из {n_bins}; "
-          f"выученный минимум {lrn.min():.2e}")
+    print(f"{a.name}: the reference is zero in {int((ref == 0).sum())} of {n_bins} bins; "
+          f"the learned minimum is {lrn.min():.2e}")
 
     DEP.mkdir(parents=True, exist_ok=True)
     (DEP / "profiles.json").write_text(json.dumps(
@@ -90,10 +90,10 @@ def main() -> int:
 
     for sgn in (-1, 1):
         axp.axvspan(sgn * hb, sgn * 26, color="#f0f0f0", lw=0, zorder=0)
-    # ЛОГАРИФМИЧЕСКАЯ ОСЬ, И ЭТО НЕ ОФОРМЛЕНИЕ. На линейной шкале 1e-5 и ровный нуль
-    # неразличимы, то есть рисунок не показывал бы того, что заявляет. На логарифмической
-    # эталон ОБРЫВАЕТСЯ там, где он ровно нулевой, а выученный профиль идёт сплошной линией --
-    # ровно то утверждение, ради которого графика существует.
+    # A LOGARITHMIC AXIS, AND THAT IS NOT STYLING. On a linear scale 1e-5 and an exact zero are
+    # indistinguishable, so the figure would not show what it claims. On a logarithmic one the
+    # reference BREAKS OFF where it is exactly zero while the learned profile runs unbroken,
+    # which is the statement the graphic exists to make.
     floor = 1e-8
     axp.step(grid, np.where(ref > 0, ref, np.nan), where="mid", color=REFC, lw=1.0, zorder=3)
     axp.step(grid, np.maximum(lrn, floor), where="mid", color=LRN, lw=1.0, zorder=4)
@@ -113,7 +113,7 @@ def main() -> int:
     for s_ in ("top", "right"):
         axp.spines[s_].set_visible(False)
 
-    # --- две стрелки: одна и та же подстановка, противоположные стороны -----------------
+    # --- two arrows: one substitution, opposite directions -----------------------------
     axb.set_xlim(0, 1)
     axb.set_ylim(0, 1)
     axb.axis("off")
@@ -133,7 +133,7 @@ def main() -> int:
     FIGS.mkdir(parents=True, exist_ok=True)
     for ext in ("pdf", "png"):
         fig.savefig(FIGS / f"fig_toc_v2.{ext}", dpi=600)
-    print("записано: paper/figs/fig_toc_v2.pdf и .png; депозит results/toc_graphic/profiles.json")
+    print("written: paper/figs/fig_toc_v2.pdf and .png; deposit results/toc_graphic/profiles.json")
     plt.close(fig)
     return 0
 

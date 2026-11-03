@@ -923,13 +923,12 @@ class TGNNSolvTrainer:
         return float(loss.item()), loss_dict
 
     def _sigma_bin_weights(self) -> Tensor | None:
-        """Вектор по-биновых весов форменного члена sigma-лосса, загруженный один раз.
+        """The per-bin weight vector of the sigma shape term, loaded once.
 
-        ГРОМКО, А НЕ МОЛЧА. Если конфиг называет файл, которого нет, здесь поднимается
-        исключение, а не возвращается None: молчаливый откат на невзвешенный член означал бы, что
-        плечо T1 обучилось тем же функционалом, что контрольное, и разница читалась бы как
-        "перевзвешивание не помогает". Это ровно тот сорт отказа, из-за которого в проекте
-        появилось правило про громкое умолчание у таблиц диспетчеризации.
+        LOUDLY, NOT SILENTLY. If the configuration names a file that does not exist, this
+        raises rather than returning None. A silent fall back to the unweighted term would mean
+        the treated arm trained on the same objective as its control, and the absence of a
+        difference would read as "reweighting does not help".
         """
         if getattr(self, "_sigma_bin_w_cache", "unset") != "unset":
             return self._sigma_bin_w_cache
@@ -944,14 +943,14 @@ class TGNNSolvTrainer:
         f = _Path(path)
         if not f.exists():
             raise FileNotFoundError(
-                f"sigma_shape_bin_weights={path!r} не существует; невзвешенное обучение под "
-                f"видом взвешенного сделало бы плечо неотличимым от контроля"
+                f"sigma_shape_bin_weights={path!r} does not exist; unweighted training under the "
+                f"name of weighted training would make the arm indistinguishable from its control"
             )
         arr = _np.load(f).astype(_np.float64).reshape(-1)
         if not _np.all(_np.isfinite(arr)) or float(arr.min()) <= 0.0:
             raise ValueError(
-                f"sigma_shape_bin_weights из {path!r}: вес обязан быть конечным и строго "
-                f"положительным (иначе член перестаёт быть метрикой), получено "
+                f"sigma_shape_bin_weights from {path!r}: the weight must be finite and strictly "
+                f"positive, or the term stops being a metric; received "
                 f"min={arr.min()!r}, finite={bool(_np.all(_np.isfinite(arr)))}"
             )
         sha = hashlib.sha256(arr.tobytes()).hexdigest()[:16]
@@ -981,9 +980,9 @@ class TGNNSolvTrainer:
         # receives at SLE/inference time. _encoder_temp_features returns None when
         # use_temperature_in_encoder is off, so the default path is unchanged.
         enc_t_feat = model._encoder_temp_features(make_temperature_features(targets["T"]))
-        # Под роль-инвариантным плечом замыкание видит профиль, посчитанный с ОДНОЙ ролью.
-        # Супервизия обязана идти через то же представление, иначе голова обучается через одно,
-        # а читается через другое, и плечо перестаёт быть контрастом одного отличия.
+        # Under the role-invariant arm the closure sees a profile computed with ONE role. The
+        # supervision must go through the same representation, or the head is trained through one
+        # and read through another, and the arm stops being a contrast of a single difference.
         enc_role = "solute" if getattr(self.cfg, "sigma_role_invariant", False) else role
         _, g_payload, _, _ = model._encode_and_readout(sol_batch, enc_role, temp_feat=enc_t_feat)
         g = g_payload["value"]
@@ -999,10 +998,10 @@ class TGNNSolvTrainer:
             mode=self.cfg.sigma_profile_loss, area_scale=self.cfg.sigma_area_scale,
             shape_weight=self.cfg.sigma_shape_weight,
             shape_bin_weights=self._sigma_bin_weights(),
-            # Пол применяется ТОЛЬКО на обучении. validate_sigma зовёт с floored=False, чтобы
-            # критерий раннего останова и выбора best_state в pretrain_pipeline остался ТЕМ ЖЕ
-            # функционалом, что у контрольного плеча: иначе плечи отличались бы ещё и выбранной
-            # точкой разогрева, то есть переставали бы быть контрастом одного отличия.
+            # The floor applies ONLY during training. validate_sigma is called with
+            # floored=False so that the early-stopping and best-state criteria remain the SAME
+            # objective as in the control arm; otherwise the arms would differ in the chosen
+            # warm-up point as well, and stop being a contrast of a single difference.
             shape_floor=(float(getattr(self.cfg, "sigma_shape_floor", 0.0))
                          if floored else 0.0),
             return_components=True,

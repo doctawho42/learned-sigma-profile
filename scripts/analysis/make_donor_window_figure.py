@@ -10,7 +10,7 @@ alone, with no atom typing, mass there makes the hydrogen-bond term live on a pa
 does not call for it.  A reader can check "the reference is exactly zero and the learned profile is
 not" in one glance and cannot check it in a sentence, which is what the figure is for.
 
-WHICH ARM, AND WHY IT CHANGED (2026-09-28)
+WHICH ARM THIS READS, AND WHY
 ------------------------------------------
 This figure was first drawn from results/closure_ladder/placebo_profile_diagnosis.csv, a RETIRED
 run whose sigma-supervision stream ran for zero steps.  Sec. 3.3 named that scope, and also named
@@ -67,7 +67,6 @@ import pandas as pd  # noqa: E402
 SALMON = "#E8A98C"   # the learned profile -- the arm the substitution replaces
 TEAL = "#7FB5A6"     # the reference tabulation
 INK = "#4D4D4D"
-_STYLE = Path.home() / ".claude/skills/repo-to-paper/assets/softpastel.mplstyle"
 
 #: Common names for the solvents the manuscript names in prose, so the figure reads as chemistry
 #: rather than as SMILES.  Anything absent falls back to its SMILES, which is the honest default.
@@ -88,8 +87,9 @@ NAMES = {
     "CC(=O)c1ccccc1": "acetophenone", "O=C1CCCCC1": "cyclohexanone",
     "O=C1CCCO1": "gamma-butyrolactone", "COCOC": "dimethoxymethane",
     "CC1COC(=O)O1": "propylene carbonate", "CCCCCOC(C)=O": "pentyl acetate",
-    # CCC(C)(C)C(C)C НАМЕРЕННО без названия: разбор его локантов от руки -- не то место, где
-    # стоит рисковать, а SMILES и есть честное умолчание этой таблицы.
+    # CCC(C)(C)C(C)C is DELIBERATELY left without a trivial name: assigning its locants by
+    # hand is not worth the risk of getting them wrong, and the SMILES is this table's
+    # honest default.
 }
 
 
@@ -101,11 +101,9 @@ def load(path: Path, top: int) -> pd.DataFrame:
 
 
 def draw(d: pd.DataFrame, out_dir: Path, stem: str) -> list[str]:
-    if _STYLE.exists():
-        plt.style.use(str(_STYLE))
-        # AFTER style.use, NOT BEFORE: the shared style file resets rcParams wholesale, so a
-        # typeface set earlier is silently discarded. The specification has to be applied last.
-        _acs_apply()
+    # The journal specification is applied last, so that nothing set earlier is discarded by a
+    # style sheet that resets rcParams wholesale.
+    _acs_apply()
     n = len(d)
     fig, ax = plt.subplots(figsize=(7.0, 0.22 * n + 1.05))
     y = range(n)
@@ -130,10 +128,9 @@ def draw(d: pd.DataFrame, out_dir: Path, stem: str) -> list[str]:
                   r"($\leftarrow$ reference tabulation $\;|\;$ learned profile $\rightarrow$)",
                   fontsize=8.2)
     ax.tick_params(axis="x", labelsize=7.2)
-    # ОДНА шкала на обе половины. На отозванной голове выученные бары были в 4-5 раз длиннее
-    # эталонных, и левой половине давался свой множитель просто чтобы поместились подписи. На
-    # плечах записи величины сравнимы (5.4 против 9.8 A^2), и раздельные шкалы теперь искажали бы
-    # ровно то сравнение, ради которого рисунок back-to-back.
+    # ONE scale across both halves. Separate scales would distort the comparison the
+    # back-to-back layout exists to make. On the arms of record the two sides are comparable in
+    # magnitude, 5.4 against 9.8 A^2, so one scale fits both without crowding the labels.
     m = max(float(d["reference_donor_window_area"].max()),
             float(d["learned_donor_window_area"].max()))
     ax.set_xlim(-m * 1.45, m * 1.45)

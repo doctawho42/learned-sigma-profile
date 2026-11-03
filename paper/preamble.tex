@@ -2,7 +2,7 @@
 % SHARED PREAMBLE, \input by BOTH documents of this submission:
 %   grounding_paradox.tex      the article                (manuscript=article)
 %   grounding_paradox_si.tex   the Supporting Information (manuscript=suppinfo)
-% Split out on 2026-08-02, when the Supporting Information became its own file at
+% Split out when the Supporting Information became its own file at
 % the request of all three referees and because ACS deposits it as a separate one.
 % Everything here was the article's own preamble before the split and is unchanged
 % apart from the xr-hyper line; the point of the file is that the two documents
@@ -82,7 +82,7 @@
 \newtheorem{corollary}{Corollary}
 \newtheorem{assumption}{Assumption}
 \newtheorem{definition}{Definition}
-% `remark' added 2026-08-11: Prop. 1 was demoted to a remark (its two clauses are
+% `remark': Prop. 1 is set as a remark, because its two clauses are
 % rearrangements of the definitions above them), and amsthm needs the environment to exist in both
 % documents.  Numbered in its own series, so no Lemma/Theorem number moves.
 \newtheorem{remark}{Remark}
@@ -152,7 +152,7 @@
 %   2. grounding_paradox.tex, Data availability -- the Zenodo DOI. The deposit does not exist yet.
 %   3. sections/SI.tex, compute ledger -- the same Zenodo DOI.
 % The bold sentence in the Data availability statement, and limitation (x), both disclose that these
-% are not yet real; do NOT delete either when the values are filled in -- rewrite them instead.
+% are not yet real. When the values are filled in, both are rewritten rather than removed.
 % ---------------------------------------------------------------------
 % \pending prints in red so an unfilled field cannot be missed in a proof read. Three call sites:
 %   Data availability -- the commit hash and the Zenodo DOI; App. I -- the same DOI.
@@ -171,7 +171,7 @@
 \newcommand{\Binsuf}{\ensuremath{B_{\mathrm{insuff}}}}
 \newcommand{\Ex}{\ensuremath{\mathbb{E}}}
 \newcommand{\Var}{\ensuremath{\mathrm{Var}}}
-% The grounding gap. Renamed from \Gamma (2026-07-27) so that it no longer collides with the
+% The grounding gap. Not \Gamma, so that it does not collide with the
 % COSMO-SAC segment activity coefficient \Gamma_S of Eq.~(4).
 \newcommand{\Ggap}{\ensuremath{\mathcal{G}}}
 % Hammett substituent constant, renamed from sigma so that it no longer collides with the

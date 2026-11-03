@@ -43,15 +43,15 @@ SI = (PAPER / "sections/si-v2.tex").read_text(encoding="utf8")
 
 def dep(rel: str) -> dict:
     p = ROOT / rel
-    assert p.exists(), f"депозита нет: {rel}"
+    assert p.exists(), f"missing deposit: {rel}"
     return json.loads(p.read_text(encoding="utf8"))
 
 
 def find(pattern: str, text: str = RESULTS) -> re.Match:
-    """Поиск по тексту с любым пробелом между словами -- переносы строк не должны мешать."""
+    """Search with any whitespace between words, so line breaks do not defeat a match."""
     rx = re.compile(r"\s+".join(pattern.split()))
     m = rx.search(text)
-    assert m is not None, f"в тексте не найдено: {pattern[:70]}"
+    assert m is not None, f"not found in the text: {pattern[:70]}"
     return m
 
 
@@ -96,7 +96,7 @@ def test_pedestal_numbers_and_the_two_roles():
                for r in ("solute", "solvent"))
     m = find(r"between \$(\d+)\\%\$ and \$(\d+)\\%\$ of those bins already lie below")
     assert int(m.group(1)) == round(100 * low) and int(m.group(2)) == round(100 * high)
-    # по ролям: именно это снимает возражение "вы сами сломали объект"
+    # by role: this is what answers the objection that the pipeline broke the object itself
     m = find(r"The pedestal is \$([\d.]+)\\pm([\d.]+)\$ on the profiles a molecule receives as "
              r"solute and \$([\d.]+)\\pm([\d.]+)\$ on those it receives as solvent")
     for off, role in ((0, "solute"), (2, "solvent")):
@@ -131,7 +131,7 @@ def test_cost_map_ratios_against_the_random_profile_control():
 
 
 def test_nonadditivity_prose_and_table_report_the_same_operation():
-    """Ровно тот дефект, который нашёл соавтор: таблица и текст про ОДНО измерение."""
+    """The defect a co-author found: the table and the prose reporting ONE measurement."""
     a = dep("results/per_bin_sensitivity_weights/closure_error_attribution.json")
     per = a["per_seed"]
     share = [np.mean(np.asarray(v["null_aad"]) > v["base_aad"]) for v in per.values()]
@@ -139,12 +139,12 @@ def test_nonadditivity_prose_and_table_report_the_same_operation():
     assert prose == round(100 * float(np.mean(share)))
     tab = int(re.search(r"worse than the fully learned profile in (\d+)\\%", TABLE).group(1))
     assert tab == prose, (
-        f"таблица печатает {tab}\\%, текст {prose}\\% -- это одно измерение, и расхождение "
-        "здесь означает, что одна из сторон читает не тот депозит"
+        f"the table prints {tab}\\% and the prose {prose}\\%; this is one measurement, and a "
+        "disagreement here means one of the two is reading the wrong deposit"
     )
     m = re.search(r"in \d+\\% of (\d+)\$\\times\$(\d+) draws", TABLE)
     assert (int(m.group(1)), int(m.group(2))) == (a["n_null"], len(per)), \
-        "план розыгрышей в таблице обязан совпадать с депозитом"
+        "the draw count in the table must match the deposit"
     m = find(r"at each of five seeds and ranging from \$(\d+)\\%\$ to \$(\d+)\\%\$ by seed")
     assert (int(m.group(1)), int(m.group(2))) == (round(100 * min(share)), round(100 * max(share)))
 
@@ -189,18 +189,18 @@ def test_the_two_sided_substitution_and_its_placebo():
     assert sorted(float(x) for x in m.groups()) == sorted(per)
     assert int(find(r"for either component in \$(\d+)\$ test rows").group(1)) == \
         ne["n_per_seed"][0]
-    assert ne["max_abs_mae_difference"] < 4e-6, "плацебо обязано оставаться плацебо"
+    assert ne["max_abs_mae_difference"] < 4e-6, "the placebo rows must stay a placebo"
 
 
 def test_no_number_is_printed_without_the_control_beside_it():
-    """Каждая строка таблицы обязана называть свой нуль: результат без него не читается."""
+    """Every table row must name its control: a result without one is not interpretable."""
     body = TABLE.split(r"\midrule")[1].split(r"\bottomrule")[0]
     rows = [r for r in body.split(r"\\") if r.strip() and "&" in r]
-    assert len(rows) == 9, f"строк в таблице {len(rows)}, ожидалось 9"
+    assert len(rows) == 9, f"the table has {len(rows)} rows, expected 9"
     for r in rows:
         instrument = r.split("&")[1]
         assert re.search(r"against|control|placebo|random|untrained|no profile", instrument), (
-            f"строка без названного нуля: {instrument.strip()[:80]}"
+            f"a row with no control named: {instrument.strip()[:80]}"
         )
 
 

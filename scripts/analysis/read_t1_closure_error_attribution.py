@@ -47,7 +47,7 @@ OUT = ROOT / "results/per_bin_sensitivity_weights"
 
 
 def metrics(m: np.ndarray, g: np.ndarray) -> dict:
-    """Скопировано побайтово из run_idac_learned_vs_reference.py:84-92."""
+    """Copied verbatim from run_idac_learned_vs_reference.py."""
     ok = np.isfinite(m) & np.isfinite(g)
     m, g = np.asarray(m, float)[ok], np.asarray(g, float)[ok]
     if m.size == 0:
@@ -59,7 +59,7 @@ def metrics(m: np.ndarray, g: np.ndarray) -> dict:
 
 
 def score(layer, p2, A2, p1, A1, T, batch: int = 2048) -> np.ndarray:
-    """Скопировано побайтово из run_idac_learned_vs_reference.py:95-108."""
+    """Copied verbatim from run_idac_learned_vs_reference.py."""
     out = []
     with torch.no_grad():
         for i in range(0, len(T), batch):
@@ -75,10 +75,10 @@ def score(layer, p2, A2, p1, A1, T, batch: int = 2048) -> np.ndarray:
 
 
 def substitute(learned: dict, ref_shape: dict, bins: np.ndarray) -> dict:
-    """Форма эталона в подмножестве бинов, площадь выученная, остальная форма выученная.
+    """Reference shape in a subset of bins, learned area, learned shape elsewhere.
 
-    Перенормировка на сумму 1 ДО умножения на выученную площадь: иначе подстановка меняла бы ещё и
-    площадь, то есть плавало бы два отличия вместо одного.
+    Renormalised to sum to one BEFORE multiplying by the learned area: otherwise the
+    substitution would move the area as well, floating two differences instead of one.
     """
     out = {}
     for k, p in learned.items():
@@ -109,7 +109,7 @@ def main() -> int:
     q1, q2 = np.quantile(w, 1 / 3), np.quantile(w, 2 / 3)
     thirds = {"expensive": w >= q2, "middle": (w > q1) & (w < q2), "cheap": w <= q1}
     for nm, b in thirds.items():
-        print(f"  треть {nm}: {int(b.sum())} бинов, вес {w[b].min():.3f}...{w[b].max():.3f}")
+        print(f"  {nm} third: {int(b.sum())} bins, weight {w[b].min():.3f}...{w[b].max():.3f}")
 
     d = pd.read_csv(RECORDS)
     T = d["T_K"].to_numpy(float)
@@ -118,7 +118,7 @@ def main() -> int:
     s1 = d.solvent_smiles.astype(str).to_numpy()
     mols = sorted(set(s2) | set(s1))
     have = {x for x in mols if canonicalize(x) in table}
-    print(f"записей {len(d)}, молекул {len(mols)}, из них с эталонным профилем {len(have)}")
+    print(f"records {len(d)}, molecules {len(mols)}, of which {len(have)} have a reference profile")
     tpl = pd.read_csv(ROOT / "notebooks/data/processed/test.csv", nrows=1, low_memory=False)
     dep = json.loads(DEPOSIT.read_text(encoding="utf8"))["arms"]["learned"]["per_seed"]
 
@@ -131,7 +131,7 @@ def main() -> int:
     for s in a.seeds:
         ck = CKPT_DIR / f"grounded_a_seed{s}.pt"
         if not ck.exists():
-            print(f"сид {s}: чекпойнта нет, пропуск")
+            print(f"seed {s}: no checkpoint, skipping")
             continue
         model, _, cfg = build_model(ck)
         as_solute, as_solvent = learned_profiles(model, cfg, mols, tpl)
@@ -142,7 +142,7 @@ def main() -> int:
             if x in have:
                 r = np.asarray(table[canonicalize(x)][0], float)
                 R[x] = r / max(r.sum(), 1e-30)
-            else:                      # эталона нет -- форму не трогаем ни в одной подстановке
+            else:                      # no reference: the shape is left untouched in every substitution
                 R[x] = None
         subst_ok = {x for x in mols if R[x] is not None}
         Rs = {x: R[x] for x in subst_ok}
@@ -165,43 +165,43 @@ def main() -> int:
         row = {"base_aad": base, "deposited_aad": dep_aad, "gate_abs_diff": gate,
                "full_shape_substituted_aad": full,
                "n_substitutable_molecules": len(subst_ok)}
-        print(f"\nсид {s}: невозмущённое AAD {base:.4f} против депонированного {dep_aad:.4f} "
-              f"(|d| = {gate:.2e} {'ok' if gate < 5e-3 else 'РАСХОДИТСЯ'})")
-        print(f"  вся форма эталонная (площадь выученная): {full:.4f}")
+        print(f"\nseed {s}: unperturbed AAD {base:.4f} against the deposited {dep_aad:.4f} "
+              f"(|d| = {gate:.2e} {'ok' if gate < 5e-3 else 'DISAGREES'})")
+        print(f"  whole shape from the reference (learned area): {full:.4f}")
         for nm, b in thirds.items():
             v = aad_with(b)
             row[f"aad_{nm}"] = v
             row[f"recovered_{nm}"] = (base - v) / max(base - full, 1e-30)
-            print(f"  починена {nm:8s} треть: AAD {v:.4f}  "
-                  f"возвращено {100 * row[f'recovered_{nm}']:+.1f}% разрыва до полной подстановки")
+            print(f"  {nm:8s} third repaired: AAD {v:.4f}  "
+                  f"{100 * row[f'recovered_{nm}']:+.1f}% of the gap to full substitution recovered")
         nulls = [aad_with(np.isin(np.arange(n_bins), ns)) for ns in null_sets]
         row["null_aad"] = nulls
         row["null_recovered"] = [float((base - x) / max(base - full, 1e-30)) for x in nulls]
         nr = np.asarray(row["null_recovered"])
-        print(f"  НУЛЬ (случайная треть, {a.n_null} розыгрышей): возвращено "
-              f"{100 * nr.mean():+.1f}% в среднем, разброс {100 * nr.min():+.1f}...{100 * nr.max():+.1f}%")
+        print(f"  NULL (random third, {a.n_null} draws): recovered "
+              f"{100 * nr.mean():+.1f}% on average, spread {100 * nr.min():+.1f}...{100 * nr.max():+.1f}%")
         p = float((nr >= row["recovered_expensive"]).mean())
         row["p_expensive_vs_null"] = p
-        print(f"  дорогая треть против нуля: p = {p:.3f}")
+        print(f"  expensive third against the null: p = {p:.3f}")
         res["per_seed"][str(s)] = row
 
     ks = list(res["per_seed"])
     if ks:
-        print(f"\n{'=' * 78}\nСВОДКА по {len(ks)} сидам (доля возвращённого разрыва)")
+        print(f"\n{'=' * 78}\nSUMMARY over {len(ks)} seeds (share of the gap recovered)")
         for nm in list(thirds) + ["null"]:
             if nm == "null":
                 vals = np.array([np.mean(res["per_seed"][k]["null_recovered"]) for k in ks])
             else:
                 vals = np.array([res["per_seed"][k][f"recovered_{nm}"] for k in ks])
-            print(f"  {nm:8s}: {100 * vals.mean():+6.1f}%  посидово "
+            print(f"  {nm:8s}: {100 * vals.mean():+6.1f}%  per seed "
                   f"{100 * vals.min():+.1f}...{100 * vals.max():+.1f}%")
         ps = [res["per_seed"][k]["p_expensive_vs_null"] for k in ks]
-        print(f"  p(дорогая >= нуля) по сидам: {np.round(ps, 3)}")
+        print(f"  p(expensive >= null) per seed: {np.round(ps, 3)}")
 
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "closure_error_attribution.json").write_text(
         json.dumps(res, ensure_ascii=False, indent=2), encoding="utf8")
-    print(f"\nзаписано: {a.out / 'closure_error_attribution.json'}")
+    print(f"\nwritten: {a.out / 'closure_error_attribution.json'}")
     return 0
 
 

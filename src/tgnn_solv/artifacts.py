@@ -104,21 +104,22 @@ def _records_from_mapping(paths: Mapping[str, str | Path | None] | None) -> list
     return records
 
 
-#: Момент импорта модуля. `train.py` импортирует его на старте, поэтому разница до записи
-#: манифеста близка к настенному времени прогона -- но это НЕ оно, и ключ назван буквально.
+#: The moment this module is imported. `train.py` imports it at start-up, so the difference to
+#: the time the manifest is written is close to the run's wall time, but it is NOT that, and the
+#: key is named literally.
 _IMPORTED_AT = time.monotonic()
 
 
 def compute_snapshot() -> dict[str, Any]:
-    """Чем именно считали: версия torch, карта, драйвер, ПИК VRAM.
+    """What the run was computed on: torch version, device, driver, PEAK VRAM.
 
-    ЗАЧЕМ. В манифестах депонированных армов (`checkpoints/e5_leakfree/*.manifest.json`) записаны
-    `python_version` и `platform`, а версии torch, имени карты, драйвера и пика памяти НЕТ. Поэтому
-    про те чекпойнты нельзя сказать, на каком torch они обучены, -- а при переносе на другую машину
-    это первое, что спрашивают. Снимок добавлен 2026-10-22 при переезде на кластер.
+    WHY. The manifests of the deposited arms record `python_version` and `platform` but not the
+    torch version, the device name, the driver or the peak memory. One cannot therefore say which
+    torch those checkpoints were trained under, which is the first question asked when moving to
+    another machine.
 
-    Функция обязана быть безопасной там, где torch или `nvidia-smi` отсутствуют: `runtime_snapshot`
-    вызывают и чисто процессорные скрипты.
+    The function must be safe where torch or `nvidia-smi` are absent: `runtime_snapshot` is
+    called by CPU-only scripts as well.
     """
     out: dict[str, Any] = {
         "elapsed_since_module_import_s": round(time.monotonic() - _IMPORTED_AT, 1),
@@ -128,13 +129,13 @@ def compute_snapshot() -> dict[str, Any]:
         import torch
     except ImportError:
         out["torch"] = None
-        out["note"] = "torch не импортируется -- снимок вычислителя пуст"
+        out["note"] = "torch does not import; the device snapshot is empty"
         return out
     out["torch"] = torch.__version__
     out["torch_cuda_build"] = torch.version.cuda
     try:
         out["cuda_available"] = bool(torch.cuda.is_available())
-    except Exception:                                    # драйвер может отвалиться на ходу
+    except Exception:                                    # the driver can disappear mid-run
         out["cuda_available"] = False
     if out["cuda_available"]:
         try:
@@ -142,10 +143,10 @@ def compute_snapshot() -> dict[str, Any]:
             out["gpu_name"] = torch.cuda.get_device_name(0)
             out["gpu_capability"] = list(torch.cuda.get_device_capability(0))
             out["gpu_mem_total_gib"] = round(torch.cuda.mem_get_info(0)[1] / 2**30, 2)
-            # ПИК -- главное из того, чего не было: он отвечает на «влезет ли на другую карту».
+            # The PEAK is the one that was missing: it answers whether a run fits another card.
             out["peak_vram_allocated_gib"] = round(torch.cuda.max_memory_allocated() / 2**30, 3)
             out["peak_vram_reserved_gib"] = round(torch.cuda.max_memory_reserved() / 2**30, 3)
-        except Exception as exc:                         # не ронять манифест из-за провенанса
+        except Exception as exc:                         # never fail the manifest over provenance
             out["gpu_probe_error"] = f"{type(exc).__name__}: {exc}"
     exe = shutil.which("nvidia-smi")
     if exe:

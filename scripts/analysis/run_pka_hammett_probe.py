@@ -20,7 +20,7 @@ the full grounding-test + closure/insufficiency-decomposition HARNESS on a
 semi-synthetic Hammett series whose ground-truth B_clos / B_insuff are known in closed
 form, so the estimators and one-sided bounds can be checked against truth; (c) shows the
 two-cause conflation of the grounding gap Gamma in the pKa domain (the pKa version of the
-referee's Counterexample A). The REAL experiment reuses this harness with real pKa labels
+two-cause counterexample). The REAL experiment reuses this harness with real pKa labels
 and the shared graph encoder in place of the semi-synthetic generator (Modal-gated).
 
 Run:

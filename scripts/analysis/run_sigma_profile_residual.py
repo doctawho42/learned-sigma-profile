@@ -45,39 +45,40 @@ from tgnn_solv.model import TGNNSolv                   # noqa: E402
 from tgnn_solv.sigma_oracle import load_sigma_profiles  # noqa: E402
 
 CKPT_DIR = ROOT / "checkpoints/e5_leakfree"
-#: Обучающий sigma-поток. Нужен НЕ для счёта, а для РАССЛОЕНИЯ: 51 из 126 молекул прибора
-#: лежат в пуле супервизии (измерено 2026-10-03), и все 51 -- как РАСТВОРИТЕЛИ теста, ноль
-#: как растворяемые. Это не утечка относительно оценки по скаффолдам солютов: гард
-#: build_sigma_profile_aux_stream.py исключает скаффолды из колонки solute_smiles отложенных
-#: сплитов, а растворители в корпусе общие (их ~227, отложить нельзя), и оценка никогда не
-#: спрашивает об этих молекулах как о растворяемых. Но для ПРИБОРА это смешивание: пулёвая
-#: медиана есть пропорция 40/60, а страты расходятся почти на весь сид-пол, поэтому обе
-#: печатаются отдельно.
+#: The sigma supervision stream. It is read not to compute anything but to STRATIFY: 51 of the
+#: 126 molecules this instrument sees lie in the supervision pool, and all 51 appear in the test
+#: set as SOLVENTS, none as solutes. That is not a leak with respect to a solute-scaffold
+#: evaluation: the guard in build_sigma_profile_aux_stream.py excludes scaffolds taken from the
+#: solute_smiles column of the held-out splits, solvents are shared across the corpus and cannot
+#: be held out, and the evaluation never asks about these molecules as solutes. For THIS
+#: instrument it is nonetheless a mixture: a pooled median is a 40/60 mixing proportion rather
+#: than a property of the model, and the two strata differ by nearly the whole seed spread, so
+#: both are printed separately.
 SIGMA_POOL = ROOT / "notebooks/data/processed_sigma_aux_stream_rebuilt/sigma_train.csv"
 PROFILES = ROOT / "results/sigma_profile_artifact/sigma_profiles.csv"
 TEST = ROOT / "notebooks/data/processed/test.csv"
 OUT_DIR = ROOT / "results/sigma_profile_residual"
 
-#: Служебные аргументы make_loader; см. way2drug/w2d_solubility/predictor.py, там же
-#: объяснено, почему source_uncertainty_csv отключается (на предсказание не влияет).
+#: Housekeeping arguments for make_loader. source_uncertainty_csv is switched off because it
+#: carries per-row label uncertainty, which the prediction path does not read.
 RESERVED = {"batch_size", "shuffle", "num_workers", "seed", "drop_last", "cache",
             "use_pair_temperature_batching", "source_uncertainty_csv"}
 
 
 def hellinger(p: np.ndarray, q: np.ndarray) -> float:
-    """H(p,q) = sqrt(1/2 * sum (sqrt(p)-sqrt(q))^2), формула (9) Salih et al.
+    """H(p,q) = sqrt(1/2 * sum (sqrt(p)-sqrt(q))^2), equation (9) of Salih et al.
 
-    Профили НЕнормированы (площадь в A^2), как и у них, поэтому H тоже в sqrt(A^2).
+    The profiles are UNnormalised, carrying area in A^2 as in that work, so H is in sqrt(A^2).
     """
     return float(np.sqrt(0.5 * np.sum((np.sqrt(np.clip(p, 0, None))
                                        - np.sqrt(np.clip(q, 0, None))) ** 2)))
 
 
 def hellinger_to_delta(p: np.ndarray, grid: np.ndarray) -> float:
-    """H до дельта-функции той же площади -- метрика «сколько информации в профиле».
+    """H to a delta function of the same area: how much shape a profile carries at all.
 
-    Дельта ставится в бин, ближайший к средневзвешенному заряду профиля: это и есть
-    «нулевая информация», когда от профиля остаётся только суммарный заряд и площадь.
+    The delta is placed in the bin nearest the profile's area-weighted mean charge, which is
+    the zero-shape case: all that survives is the total charge and the total area.
     """
     area = float(p.sum())
     if area <= 0:
@@ -97,29 +98,29 @@ def build_model(ckpt: Path) -> tuple[TGNNSolv, dict, TGNNSolvConfig]:
     state = ck.get("model_state") or ck["model_state_dict"]
     missing, unexpected = model.load_state_dict(state, strict=False)
     if missing:
-        raise SystemExit(f"{ckpt.name}: не загрузились веса {missing[:5]} "
-                         f"(всего {len(missing)}) -- профиль был бы от неинициализированной головы")
+        raise SystemExit(f"{ckpt.name}: weights did not load for {missing[:5]} "
+                         f"({len(missing)} in total); the profile would come from an uninitialised head")
     model.eval()
     return model, ck, cfg
 
 
 def learned_profiles(model: TGNNSolv, cfg: TGNNSolvConfig,
                      smiles: list[str], template: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
-    """Профили в РОЛИ растворяемого и в РОЛИ растворителя, (n_mol, n_bins) каждый.
+    """Profiles in the SOLUTE role and in the SOLVENT role, (n_mol, n_bins) each.
 
-    РОЛЬ ИМЕЕТ ЗНАЧЕНИЕ, И ЭТО ИЗМЕРЕНО, А НЕ ПРЕДПОЛОЖЕНО. Энкодер собран с
-    encoder_role_mode="shared_residual" и двумя role-specific слоями, поэтому одна и та же
-    молекула получает РАЗНЫЙ профиль в зависимости от того, какую сторону пары она занимает:
-    этанол выходит с площадью 88.3 A^2 как растворяемое и 108.0 A^2 как растворитель.
-    Эталонный профиль при этом один на молекулу. ПОПРАВЛЕНО 2026-09-28: раньше здесь стояло
-    «и оракул подставляет его в ОБА слота» -- это неверно. По размеченным строкам теста 7704
-    подставляются только в слоте растворителя, 354 в обеих ролях, 8 только в слоте растворяемого.
-    Механизм -- «безролевой массив попадает не в своё распределение в том слоте, который
-    вытесняет, почти всегда в слот растворителя», а не «один массив в оба слота».
+    THE ROLE MATTERS, AND THAT IS MEASURED RATHER THAN ASSUMED. The encoder is built with
+    encoder_role_mode="shared_residual" and two role-specific layers, so one molecule receives a
+    DIFFERENT profile depending on which side of the pair it occupies: ethanol comes out at
+    88.3 A^2 of area as a solute and 108.0 A^2 as a solvent. The reference profile, by contrast,
+    is one array per molecule. Substitution is therefore not symmetric across the two slots: over
+    the labelled test rows, 7704 replace the solvent slot only, 354 replace both roles, and 8
+    replace the solute slot only. The mechanism is a role-free array entering the distribution of
+    whichever slot it displaces, almost always the solvent slot, and not one array entering
+    both.
 
-    От партнёра профиль при этом НЕ зависит: этанол-как-растворяемое даёт 88.281 A^2 с водой,
-    бензолом и ацетонитрилом с точностью 3e-06. Первая функция здесь -- это проверить, а вторая
-    -- не смешать одно с другим.
+    The profile does NOT depend on the partner: ethanol as a solute gives 88.281 A^2 against
+    water, benzene and acetonitrile alike, to within 3e-06. The first job of this function is to
+    verify that, and the second is to keep the two role profiles apart.
     """
     captured: list[torch.Tensor] = []
     handle = model.head_sigma.register_forward_hook(
@@ -128,7 +129,7 @@ def learned_profiles(model: TGNNSolv, cfg: TGNNSolvConfig,
         rows = []
         for smi in smiles:
             r = template.iloc[0].copy()
-            r["solute_smiles"] = r["solvent_smiles"] = smi     # self-пара: обе роли за прогон
+            r["solute_smiles"] = r["solvent_smiles"] = smi     # self-pair: both roles in one pass
             r["temperature"], r["ln_x2"] = 298.15, 0.0
             rows.append(r)
         df = pd.DataFrame(rows).reset_index(drop=True)
@@ -139,7 +140,7 @@ def learned_profiles(model: TGNNSolv, cfg: TGNNSolvConfig,
         loader = make_loader(df, batch_size=64, shuffle=False, num_workers=0, cache=True,
                              use_pair_temperature_batching=False, **kwargs)
         if len(loader.dataset) != len(df):
-            raise RuntimeError(f"датасет оставил {len(loader.dataset)} из {len(df)} строк")
+            raise RuntimeError(f"the dataset kept {len(loader.dataset)} of {len(df)} rows")
 
         with torch.no_grad():
             for sol, slv, tgt in loader:
@@ -150,23 +151,23 @@ def learned_profiles(model: TGNNSolv, cfg: TGNNSolvConfig,
     finally:
         handle.remove()
 
-    # head_sigma зовётся ДВАЖДЫ НА БАТЧ (сначала solute, потом solvent), а не дважды на строку.
+    # head_sigma is called TWICE PER BATCH, solute then solvent, and not twice per row.
     if len(captured) % 2:
-        raise RuntimeError(f"нечётное число вызовов хука ({len(captured)}): разбор по ролям неверен")
+        raise RuntimeError(f"an odd number of hook calls ({len(captured)}): the split by role is wrong")
     as_solute = np.vstack([c.numpy() for c in captured[0::2]])
     as_solvent = np.vstack([c.numpy() for c in captured[1::2]])
     if as_solute.shape != as_solvent.shape or len(as_solute) != len(smiles):
-        raise RuntimeError(f"формы не сошлись: {as_solute.shape} / {as_solvent.shape} "
-                           f"на {len(smiles)} молекул")
+        raise RuntimeError(f"shapes disagree: {as_solute.shape} / {as_solvent.shape} "
+                           f"for {len(smiles)} molecules")
     return as_solute, as_solvent
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ckpt-dir", type=Path, default=CKPT_DIR,
-                    help="каталог весов; по умолчанию депонированное семейство e5_leakfree")
-    ap.add_argument("--out", type=Path, default=OUT_DIR, help="куда писать")
-    ap.add_argument("--limit", type=int, default=0, help="взять только N молекул")
+                    help="directory of weights; defaults to the deposited e5_leakfree family")
+    ap.add_argument("--out", type=Path, default=OUT_DIR, help="where to write the results")
+    ap.add_argument("--limit", type=int, default=0, help="use only the first N molecules")
     ap.add_argument("--seeds", type=int, nargs="*", default=None)
     args = ap.parse_args()
 
@@ -174,30 +175,31 @@ def main() -> int:
     if args.seeds:
         cks = [p for p in cks if any(f"seed{s}" in p.name for s in args.seeds)]
     if not cks:
-        print(f"нет чекпойнтов в {args.ckpt_dir}")
+        print(f"no checkpoints in {args.ckpt_dir}")
         return 1
 
     _, _, cfg0 = build_model(cks[0])
     n_bins = int(cfg0.cosmo_sac_n_bins)
     grid = np.linspace(cfg0.cosmo_sac_sigma_min, cfg0.cosmo_sac_sigma_max, n_bins)
     s_hb = float(cfg0.cosmo_sac_sigma_hb)
-    donor = grid <= -s_hb          # ядро 2002 включает HB за |sigma| > sigma_hb
+    donor = grid <= -s_hb          # the 2002 kernel switches on hydrogen bonding beyond |sigma| > sigma_hb
     acceptor = grid >= s_hb
     nonpolar = ~(donor | acceptor)
-    print(f"сетка: {n_bins} бинов, sigma в [{grid[0]:.3f}, {grid[-1]:.3f}], "
-          f"порог ядра {s_hb}; донор {donor.sum()} бинов, неполярная {nonpolar.sum()}, "
-          f"акцептор {acceptor.sum()}")
+    print(f"grid: {n_bins} bins, sigma in [{grid[0]:.3f}, {grid[-1]:.3f}], "
+          f"kernel threshold {s_hb}; donor {donor.sum()} bins, nonpolar {nonpolar.sum()}, "
+          f"acceptor {acceptor.sum()}")
 
     table = load_sigma_profiles(str(PROFILES), n_bins=n_bins)
     test = pd.read_csv(TEST, low_memory=False)
-    # НЕ `ln_x2.notna()`: вспомогательные строки (`source=aux_only`, несут has_T_m) лежат в том же
-    # файле с ln_x2 РОВНО 0.0, а не NaN, поэтому notna() их пропускает -- 8103 строки вместо 5608.
-    # has_solubility даёт тот же САМЫЙ набор 5608 строк (проверено поэлементно, не по числу).
+    # NOT `ln_x2.notna()`: the auxiliary rows (`source=aux_only`, carrying has_T_m) sit in the
+    # same file with ln_x2 EXACTLY 0.0 rather than NaN, so notna() admits them and returns 8103
+    # rows instead of 5608. has_solubility selects the SAME 5608 rows, checked element by element
+    # rather than by count.
     if "has_solubility" in test.columns:
         scored = test[test["has_solubility"].astype(bool)]
     else:
         scored = test[test["ln_x2"].notna()]
-    assert not (scored["ln_x2"] == 0.0).all(), "отобраны строки-заполнители, а не измерения"
+    assert not (scored["ln_x2"] == 0.0).all(), "placeholder rows were selected rather than measurements"
     seen = set(scored["solute_smiles"].astype(str)) | set(scored["solvent_smiles"].astype(str))
 
     from tgnn_solv.data.utils import canonicalize
@@ -212,14 +214,14 @@ def main() -> int:
         supervised = {c for s_ in pool["solute_smiles"].dropna().astype(str)
                       if (c := canonicalize(s_)) is not None}
     else:
-        print(f"ВНИМАНИЕ: пул {SIGMA_POOL} не найден -- расслоения по супервизии не будет")
+        print(f"WARNING: pool {SIGMA_POOL} not found; the results will not be stratified by supervision")
     in_pool = {m: (canonicalize(str(m)) in supervised) for m in mols}
     n_sup = sum(in_pool.values())
-    print(f"молекул со сверяемым профилем, встречающихся в размеченном тесте: {len(mols)}")
-    print(f"  из них В ПУЛЕ супервизии: {n_sup} ({n_sup / max(len(mols), 1):.1%}), "
-          f"отложено {len(mols) - n_sup}")
+    print(f"molecules with a comparable profile that occur in the labelled test set: {len(mols)}")
+    print(f"  of these, IN the supervision pool: {n_sup} ({n_sup / max(len(mols), 1):.1%}), "
+          f"held out {len(mols) - n_sup}")
     if not mols:
-        print("пересечение пусто -- сверять нечего")
+        print("the intersection is empty; there is nothing to compare")
         return 1
 
     template = pd.read_csv(TEST, nrows=1, low_memory=False)
@@ -229,7 +231,7 @@ def main() -> int:
     for ck in cks:
         model, ckd, cfg = build_model(ck)
         seed = int(ckd.get("seed", -1))
-        print(f"  сид {seed}: прогоняю {len(mols)} молекул ...", flush=True)
+        print(f"  seed {seed}: running {len(mols)} molecules ...", flush=True)
         sol_p, slv_p = learned_profiles(model, cfg, mols, template)
         per_seed[seed] = (sol_p, slv_p)
         for i, smi in enumerate(mols):
@@ -239,16 +241,17 @@ def main() -> int:
                    "area_reference": float(rp.sum()),
                    "donor_area_reference": float(rp[donor].sum()),
                    "hellinger_reference_to_delta": hellinger_to_delta(rp, grid),
-                   # расхождение РОЛЕЙ: у эталона его нет по построению, у выученного есть
+                   # the gap between ROLES: the reference has none by construction, the learned profile does
                    "hellinger_solute_vs_solvent": hellinger(sol_p[i], slv_p[i])}
-            # БАЗОВАЯ ЛИНИЯ -- ДОЛЯ ПЛОЩАДИ, А НЕ ДОЛЯ БИНОВ. Первая версия сравнивала
-            # долю остатка с долей бинов сетки (1/3 на окно) и объявляла остаток
-            # «сконцентрированным в центре». Это неверная база: sigma-профиль органической
-            # молекулы резко пикован около нуля, у половины этих растворителей донорная
-            # площадь эталона ровно 0.00, то есть площадь и так почти вся в центре.
-            # Правильный вопрос -- обогащение: доля остатка, делённая на долю ПЛОЩАДИ в том
-            # же окне. Обогащение около 1 означает, что остаток пропорционален площади,
-            # то есть НЕ структурирован; это слабее и честнее, чем «сконцентрирован».
+            # THE BASELINE IS THE SHARE OF AREA, NOT THE SHARE OF BINS. Comparing the share of
+            # the residual against the share of grid bins, one third per window, would declare
+            # the residual concentrated in the centre for a trivial reason: the sigma-profile of
+            # an organic molecule is sharply peaked near zero, and for half of these solvents the
+            # reference donor area is exactly 0.00, so almost all the area is in the centre
+            # already. The question that is not trivial is enrichment: the share of the residual
+            # divided by the share of AREA in the same window. An enrichment near one means the
+            # residual is proportional to area and therefore NOT structured, which is a weaker
+            # and more honest reading than "concentrated".
             for reg, msk in (("donor", donor), ("nonpolar", nonpolar), ("acceptor", acceptor)):
                 rec[f"area_frac_reference_{reg}"] = float(rp[msk].sum() / (rp.sum() or np.nan))
             for role, lp in (("solute", sol_p[i]), ("solvent", slv_p[i])):
@@ -262,7 +265,7 @@ def main() -> int:
                 for reg, msk in (("donor", donor), ("nonpolar", nonpolar),
                                  ("acceptor", acceptor)):
                     rf = float(np.abs(resid[msk]).sum() / tot)
-                    # база: средняя доля площади двух профилей, которые и вычитаются
+                    # baseline: the mean area share of the two profiles being subtracted
                     af = 0.5 * (float(lp[msk].sum() / (lp.sum() or np.nan))
                                 + float(rp[msk].sum() / (rp.sum() or np.nan)))
                     rec[f"area_{reg}_{role}"] = float(lp[msk].sum())
@@ -275,18 +278,20 @@ def main() -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     df.to_csv(args.out / "per_molecule.csv", index=False)
 
-    # Доля бинов в каждой области -- база сравнения. Без неё «40% остатка в доноре»
-    # ничего не значит: если донор и есть 40% сетки, это ровно ожидание.
+    # The share of bins in each window, as a reference point. Without it, "40% of the residual
+    # in the donor window" says nothing: if the donor window is 40% of the grid, that is the
+    # expectation.
     base = {"donor": float(donor.mean()), "nonpolar": float(nonpolar.mean()),
             "acceptor": float(acceptor.mean())}
     donor_free = df["donor_area_reference"] <= 1e-9
-    # РАССЛОЕНИЕ ПО СУПЕРВИЗИИ, и это не украшение сводки. Пулёвая медиана считается по смеси
-    # 40% супервизированных и 60% отложенных молекул, то есть она есть ПРОПОРЦИЯ СМЕШИВАНИЯ, а
-    # не свойство модели: страты расходятся почти на весь межсидовый пол (измерено 2026-10-03 --
-    # Хеллингер растворителя 3.0385 внутри пула против 3.4173 вне, при поле 0.421). Любое
-    # чтение «профиль стал ближе к эталону» обязано идти по стратам, иначе оно частично читает
-    # посадку на обучающую выборку. Пул при этом НЕ является утечкой относительно оценки по
-    # скаффолдам солютов: все супервизированные молекулы прибора стоят в тесте растворителями.
+    # STRATIFICATION BY SUPERVISION, which is not decoration. A pooled median is computed over a
+    # mixture of 40% supervised and 60% held-out molecules, so it is a MIXING PROPORTION rather
+    # than a property of the model: the two strata differ by nearly the whole between-seed
+    # spread, the solvent Hellinger distance being 3.0385 inside the pool against 3.4173 outside
+    # at a spread of 0.421. Any reading of the form "the profile moved closer to the reference"
+    # must therefore be taken within a stratum, or it reads fit to the training set in part. The
+    # pool is NOT a leak with respect to a solute-scaffold evaluation: every supervised molecule
+    # this instrument sees stands in the test set as a solvent.
     strata = {}
     for tag, sel in (("in_pool", df["in_sigma_pool"].astype(bool)),
                      ("held_out", ~df["in_sigma_pool"].astype(bool))):
@@ -310,8 +315,8 @@ def main() -> int:
         b = strata.get("held_out", {}).get("median_hellinger_to_reference", {}).get(r)
         sd = strata.get("held_out", {}).get("seed_sd_hellinger_to_reference", {}).get(r)
         if a is not None and b is not None:
-            print(f"  {r}: Хеллингер в пуле {a:.4f} против отложенных {b:.4f} "
-                  f"(разрыв {b - a:+.4f}" + (f", сид-пол отложенных {sd:.4f})" if sd else ")"))
+            print(f"  {r}: Hellinger in the pool {a:.4f} against held out {b:.4f} "
+                  f"(gap {b - a:+.4f}" + (f", held-out seed spread {sd:.4f})" if sd else ")"))
 
     summary = {
         "n_molecules": len(mols), "seeds": sorted(per_seed),
@@ -340,35 +345,35 @@ def main() -> int:
     (args.out / "summary.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf8")
 
-    print(f"\n{'':30s}{'донор':>10}{'неполярн':>11}{'акцептор':>11}")
-    print(f"  {'доля бинов сетки':28s}{base['donor']:>10.3f}{base['nonpolar']:>11.3f}"
+    print(f"\n{'':30s}{'donor':>10}{'nonpolar':>11}{'acceptor':>11}")
+    print(f"  {'share of grid bins':28s}{base['donor']:>10.3f}{base['nonpolar']:>11.3f}"
           f"{base['acceptor']:>11.3f}")
     for r in ("solute", "solvent"):
         a = summary["median_area_frac"][r]
         m = summary["median_resid_frac"][r]
         e = summary["median_enrichment"][r]
-        print(f"  {'доля ПЛОЩАДИ, ' + r:28s}{a['donor']:>10.3f}{a['nonpolar']:>11.3f}"
+        print(f"  {'share of AREA, ' + r:28s}{a['donor']:>10.3f}{a['nonpolar']:>11.3f}"
               f"{a['acceptor']:>11.3f}")
-        print(f"  {'доля |остатка|, ' + r:28s}{m['donor']:>10.3f}{m['nonpolar']:>11.3f}"
+        print(f"  {'share of |residual|, ' + r:28s}{m['donor']:>10.3f}{m['nonpolar']:>11.3f}"
               f"{m['acceptor']:>11.3f}")
-        print(f"  {'ОБОГАЩЕНИЕ, ' + r:28s}{e['donor']:>10.2f}{e['nonpolar']:>11.2f}"
+        print(f"  {'ENRICHMENT, ' + r:28s}{e['donor']:>10.2f}{e['nonpolar']:>11.2f}"
               f"{e['acceptor']:>11.2f}")
-    print(f"\n  H(выученный, эталон): растворяемое "
-          f"{summary['median_hellinger_to_reference']['solute']:.3f}, растворитель "
+    print(f"\n  H(learned, reference): solute "
+          f"{summary['median_hellinger_to_reference']['solute']:.3f}, solvent "
           f"{summary['median_hellinger_to_reference']['solvent']:.3f}")
-    print(f"  H между РОЛЯМИ одной молекулы:     "
-          f"{summary['median_hellinger_role_gap']:.3f}   (у эталона роли нет вовсе)")
+    print(f"  H between the two ROLES of one molecule: "
+          f"{summary['median_hellinger_role_gap']:.3f}   (the reference has no role at all)")
     d = summary["median_hellinger_to_delta"]
-    print(f"  H до delta (шкала Salih): выученный {d['solute']:.3f}/{d['solvent']:.3f}, "
-          f"эталон {d['reference']:.3f}")
-    print(f"\n  молекул с НУЛЕВОЙ донорной площадью в эталоне: "
+    print(f"  H to a delta (Salih scale): learned {d['solute']:.3f}/{d['solvent']:.3f}, "
+          f"reference {d['reference']:.3f}")
+    print(f"\n  molecules with ZERO donor area in the reference: "
           f"{summary['donor_free_reference_molecules']}")
     z = summary["median_donor_area_where_reference_is_zero"]
-    print("  у них медианная донорная площадь выученного: "
-          f"{z['solute']:.2f} / {z['solvent']:.2f} A^2 (растворяемое / растворитель)")
-    # Печатать ФАКТИЧЕСКИЙ путь, а не умолчание: сообщение, называющее не тот каталог, есть то,
-    # из-за чего затирание депозита остаётся незамеченным, а его отсутствие вызывает панику.
-    print(f"\nзаписано: {args.out}")
+    print("  their median learned donor area: "
+          f"{z['solute']:.2f} / {z['solvent']:.2f} A^2 (solute / solvent)")
+    # Print the ACTUAL path rather than the default. A message naming the wrong directory is
+    # what lets an overwritten deposit go unnoticed, and a missing one cause alarm.
+    print(f"\nwritten: {args.out}")
     return 0
 
 

@@ -64,7 +64,7 @@ def metrics(m: np.ndarray, g: np.ndarray) -> dict:
 
 
 def score(layer, p2, A2, p1, A1, T, batch: int = 2048) -> np.ndarray:
-    """ln gamma_2^inf по паре профилей, конвенция `res` (V=None), как в депозите."""
+    """ln gamma_2^inf from a pair of profiles, `res` convention (V=None), as in the deposit."""
     out = []
     with torch.no_grad():
         for i in range(0, len(T), batch):
@@ -83,13 +83,13 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--records", type=Path, default=RECORDS,
-                    help="таблица записей; нужны solute_smiles, solvent_smiles, T_K, m")
+                    help="table of records; needs solute_smiles, solvent_smiles, T_K, m")
     ap.add_argument("--ckpt-dir", type=Path, default=CKPT_DIR)
     ap.add_argument("--arm-glob", default="grounded_a_seed*.pt")
     ap.add_argument("--seeds", type=int, nargs="*", default=None)
     ap.add_argument("--out", type=Path, default=OUT)
     ap.add_argument("--force", action="store_true",
-                    help="разрешить замену депозита с бОльшим набором сидов")
+                    help="allow replacing a deposit that carries more seeds than this run")
     a = ap.parse_args()
 
     d = pd.read_csv(a.records)
@@ -98,14 +98,14 @@ def main() -> int:
     layer.eval()
     n_bins = int(getattr(layer, "n_bins", 51))
     n_iter = int(layer.n_iter_eval)
-    print(f"записей {len(d)}, слой COSMO-SAC-2002, сегментных итераций при eval: {n_iter}")
+    print(f"records {len(d)}, COSMO-SAC-2002 layer, segment iterations at eval: {n_iter}")
 
-    # --- эталон: тот же артефакт, но ключ -- канонический SMILES, а не InChIKey -------------
+    # --- reference: the same artefact, keyed by canonical SMILES rather than InChIKey -------
     table = load_sigma_profiles(str(PROFILES), n_bins=n_bins)
     keys2 = [canonicalize(str(s)) for s in d.solute_smiles]
     keys1 = [canonicalize(str(s)) for s in d.solvent_smiles]
     have = np.array([(k2 in table) and (k1 in table) for k2, k1 in zip(keys2, keys1)])
-    print(f"  эталонный профиль с обеих сторон по SMILES: {have.sum()} из {len(d)}")
+    print(f"  reference profile on both sides by SMILES: {have.sum()} of {len(d)}")
     d = d[have].reset_index(drop=True)
     keys2 = [k for k, h in zip(keys2, have) if h]
     keys1 = [k for k, h in zip(keys1, have) if h]
@@ -118,27 +118,28 @@ def main() -> int:
     ref_A1 = np.array([table[k][1] for k in keys1], dtype=float)
     g_ref = score(layer, ref_p2, ref_A2, ref_p1, ref_A1, T)
 
-    # СТЕРЕО-НЕОДНОЗНАЧНЫЕ СТРОКИ ИСКЛЮЧАЮТСЯ, И ЭТО НЕ КОСМЕТИКА. Депозит ключует VT-2005 по
-    # InChIKey, здесь ключ -- канонический SMILES. Там, где два маршрута выбирают РАЗНЫЕ записи,
-    # молекула не определена однозначно своим SMILES: на этом корпусе это декалин, чьи цис- и
-    # транс-формы делят SMILES без стереохимии, но несут разные InChIKey и разные профили.
-    # Выученная голова тоже читает SMILES, поэтому на такой строке её профиль неоднозначен ровно
-    # так же. Строка выбрасывается из ОБЕИХ сторон, и её число печатается.
-    # ВОРОТА ЕСТЬ ТОЛЬКО ТАМ, ГДЕ ЕСТЬ С ЧЕМ СВЕРЯТЬСЯ. У депозита PGL6ed есть столбец g_res,
-    # посчитанный run_published_idac_closure_check.py, и пересчёт обязан его воспроизвести. У
-    # внешнего набора (Brouwer) такого столбца нет; тогда ворота не «пройдены», а ОТСУТСТВУЮТ, и
-    # это печатается, а не замалчивается.
+    # STEREO-AMBIGUOUS ROWS ARE EXCLUDED, AND THAT IS NOT COSMETIC. The deposit keys VT-2005 by
+    # InChIKey while this script keys by canonical SMILES. Where the two routes select DIFFERENT
+    # records, the molecule is not determined by its SMILES: on this corpus that is decalin,
+    # whose cis and trans forms share a SMILES without stereochemistry but carry different
+    # InChIKeys and different profiles. The learned head also reads SMILES, so its profile is
+    # ambiguous on such a row in exactly the same way. The row is dropped from BOTH sides, and
+    # the count is printed.
+    # A GATE EXISTS ONLY WHERE THERE IS SOMETHING TO CHECK AGAINST. The PGL6ed deposit carries a
+    # g_res column computed by run_published_idac_closure_check.py, and the recomputation must
+    # reproduce it. An external set may carry no such column; the gate is then ABSENT rather than
+    # passed, and that is printed rather than passed over.
     has_gate = "g_res" in d.columns
     ambiguous: list[str] = []
     gate = float("nan")
     amb = np.zeros(len(d), dtype=bool) if not has_gate else (
         np.abs(g_ref - d["g_res"].to_numpy(float)) > 1e-6)
     if not has_gate:
-        print("  ВОРОТА ОТСУТСТВУЮТ: столбца g_res в наборе нет, пересчёт эталона сверять не с чем")
+        print("  GATE ABSENT: the set has no g_res column, so the recomputed reference has no comparator")
     if amb.any():
         names = sorted({f"{r.solute_smiles} | {r.solvent_smiles}"
                         for r in d[amb].itertuples()})
-        print(f"  стерео-неоднозначных строк отброшено: {int(amb.sum())} из {len(d)}")
+        print(f"  stereo-ambiguous rows dropped: {int(amb.sum())} of {len(d)}")
         for nm in names[:6]:
             print(f"      {nm}")
         d = d[~amb].reset_index(drop=True)
@@ -153,13 +154,13 @@ def main() -> int:
 
     if has_gate:
         gate = float(np.nanmax(np.abs(g_ref - d["g_res"].to_numpy(float))))
-        print(f"  ВОРОТА: пересчёт эталона против депонированного g_res, max|d| = {gate:.2e}"
-              f"  {'ok' if gate < 1e-6 else 'РАСХОДИТСЯ -- читать выученное плечо нельзя'}")
+        print(f"  GATE: recomputed reference against the deposited g_res, max|d| = {gate:.2e}"
+              f"  {'ok' if gate < 1e-6 else 'DISAGREES: the learned arm cannot be read'}")
         if gate >= 1e-6:
             return 1
 
     mols = sorted(set(d.solute_smiles.astype(str)) | set(d.solvent_smiles.astype(str)))
-    print(f"  уникальных молекул для выученной головы: {len(mols)}")
+    print(f"  unique molecules for the learned head: {len(mols)}")
 
     cks = sorted(a.ckpt_dir.glob(a.arm_glob))
     rows, per_seed = [], {}
@@ -168,7 +169,7 @@ def main() -> int:
         seed = int(ckd.get("seed", -1))
         if a.seeds and seed not in a.seeds:
             continue
-        print(f"\nсид {seed} ...", flush=True)
+        print(f"\nseed {seed} ...", flush=True)
         as_solute, as_solvent = learned_profiles(model, cfg, mols, template)
         P_u = {s: np.asarray(as_solute[i], float) for i, s in enumerate(mols)}
         P_v = {s: np.asarray(as_solvent[i], float) for i, s in enumerate(mols)}
@@ -188,21 +189,20 @@ def main() -> int:
         for arm in ARMS:
             e = per_seed[seed][arm]
             print(f"  {arm:22s} AAD {e['aad']:.4f}  RMSE {e['rmse']:.4f}  "
-                  f"R2 {e['r2']:+.4f}  смещение {e['bias']:+.4f}")
+                  f"R2 {e['r2']:+.4f}  bias {e['bias']:+.4f}")
         for arm in ARMS:
             rows.append(pd.DataFrame({"seed": seed, "arm": arm, "m": m, "g": g[arm],
                                       "solute_smiles": s2, "solvent_smiles": s1,
                                       "aqueous": d["aqueous"].to_numpy()}))
 
     if not per_seed:
-        print("нет чекпойнтов")
+        print("no checkpoints")
         return 1
     per_row = pd.concat(rows, ignore_index=True)
 
-    # НЕ ЗАТИРАТЬ МНОГОСИДОВЫЙ ДЕПОЗИТ ОДНОСИДОВЫМ ПРОГОНОМ. Регрессионная проверка с --seeds 42
-    # после правки ворот записалась в тот же --out и уничтожила пятисидовый депозит; числа из него
-    # потом едва не были прочитаны как пятисидовые. Односидовый прогон -- это проверка тракта, а
-    # депозит он заменять не должен: либо --out в отдельную папку, либо --force.
+    # DO NOT OVERWRITE A MULTI-SEED DEPOSIT WITH A SINGLE-SEED RUN. A single-seed run is a check
+    # of the pipeline and must not replace the deposit, because the result would then be read as
+    # if it carried every seed. Write to a separate --out, or pass --force deliberately.
     prev = a.out / "summary.json"
     if prev.exists() and not a.force:
         try:
@@ -211,14 +211,14 @@ def main() -> int:
             old_seeds = set()
         new_seeds = set(int(s) for s in per_seed_index(per_row))
         if old_seeds - new_seeds:
-            print(f"ОТКАЗ: в {a.out} лежит депозит на сидах {sorted(old_seeds)}, "
-                  f"а этот прогон несёт {sorted(new_seeds)}. Затирать не буду.\n"
-                  f"  либо --out в другую папку, либо --force, если замена намеренна.")
+            print(f"REFUSING: {a.out} holds a deposit over seeds {sorted(old_seeds)} "
+                  f"and this run carries {sorted(new_seeds)}.\n"
+                  f"  Write to another --out, or pass --force if the replacement is intended.")
             return 1
     a.out.mkdir(parents=True, exist_ok=True)
     per_row.to_csv(a.out / "per_row.csv", index=False)
 
-    print(f"\n{'плечо':<22}{'AAD':>9}{'RMSE':>9}{'R2':>9}{'смещение':>11}")
+    print(f"\n{'arm':<22}{'AAD':>9}{'RMSE':>9}{'R2':>9}{'bias':>11}")
     summary = {"n_records": int(len(d)), "n_molecules": len(mols),
                "dropped_stereo_ambiguous": ambiguous,
                "seeds": sorted(per_seed), "segment_iterations_eval": n_iter,
@@ -242,11 +242,11 @@ def main() -> int:
     ref, lrn = summary["arms"]["reference_vt2005"]["aad_mean"], summary["arms"]["learned"]["aad_mean"]
     summary["learned_minus_reference_aad"] = float(lrn - ref)
     summary["learned_over_reference_aad"] = float(lrn / ref) if ref else None
-    print(f"\n  выученный минус эталон, AAD: {lrn - ref:+.4f}  ({lrn / ref:.2f}x)")
-    print("  для масштаба: опубликованный COSMO-SAC-2002 на HF-TZVP даёт AAD 1.7457")
+    print(f"\n  learned minus reference, AAD: {lrn - ref:+.4f}  ({lrn / ref:.2f}x)")
+    print("  for scale: published COSMO-SAC-2002 on HF-TZVP gives an AAD of 1.7457")
     (a.out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2),
                                         encoding="utf8")
-    print(f"\nзаписано: {a.out}")
+    print(f"\nwritten: {a.out}")
     return 0
 
 

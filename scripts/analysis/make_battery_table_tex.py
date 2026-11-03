@@ -46,15 +46,15 @@ def main() -> int:
     refst = load("results/reference_state_violation/summary.json")["per_seed"]
     wts = load("results/per_bin_sensitivity_weights/summary.json")["by_rows"]
 
-    # --- 1. идентифицируемость: граница Крамера-Рао в физических единицах ------------------
+    # --- 1. identifiability: the Cramer-Rao bound in physical units -----------------------
     cond0 = ident["solubility_only"]["cond"]
     crlb0 = ident["solubility_only"]["crlb_sd_dH_fus_Jmol"] / 1000.0
     crlb1 = ident["plus_Tm_dH"]["crlb_sd_dH_fus_Jmol"] / 1000.0
 
-    # --- 2. обогащение остатка по окнам, чистый пул ----------------------------------------
+    # --- 2. enrichment of the residual by window, on the clean pool -----------------------
     en = resid["median_enrichment"]["solute"]
 
-    # --- 3. пьедестал -----------------------------------------------------------------------
+    # --- 3. the pedestal --------------------------------------------------------------------
     ped = [r[k]["pedestal_median"] for r in floor["per_seed"].values()
            for k in ("solute", "solvent")]
     mn = min(r[k]["min_bin_mass_anywhere"] for r in floor["per_seed"].values()
@@ -64,28 +64,29 @@ def main() -> int:
     ped0 = floor["untrained_null"]["pedestal_median"]
     zshare = 100 * floor["share_reference_zero_cells"]
 
-    # --- 4. референсное состояние -----------------------------------------------------------
+    # --- 4. the reference state -------------------------------------------------------------
     med = [v["median_abs_n30"] for v in refst.values()]
     mx = max(v["max_abs_n300"] for v in refst.values())
     ctrl = max(abs(v["control_max_abs"]) for v in refst.values())
 
-    # --- 5. цена размещения -----------------------------------------------------------------
+    # --- 5. the cost of placement -----------------------------------------------------------
     cc = {k: np.median(wts[k]["corner_over_core_per_seed"]) for k in ("train", "idac")}
     ccn = max(wts[k]["null"]["corner_over_core"] for k in ("train", "idac"))
 
-    # --- 6, 7. подстановки ------------------------------------------------------------------
+    # --- 6, 7. the substitutions ------------------------------------------------------------
     fixnz = 100 * np.mean([r["recovered_fix_nonzero"] for r in costs.values()])
     zerop = 100 * np.mean([r["recovered_zero_pedestal"] for r in costs.values()])
     full_helps = sum(r["base_aad"] > r["aad_full"] for r in costs.values())
-    # ВНИМАНИЕ НА ДЕПОЗИТ. Эта строка описывает подстановку ЭТАЛОНА в случайную треть бинов, и
-    # читаться обязана из closure_error_attribution. Первая редакция брала долю из
-    # pedestal_costs, где нуль -- ОБНУЛЕНИЕ случайных клеток, и печатала 94% там, где
-    # описанная операция даёт 20%. Текст и таблица расходились на одном и том же измерении.
+    # MIND WHICH DEPOSIT. This row describes substituting the REFERENCE into a random third of
+    # the bins, and must be read from closure_error_attribution. Reading the share from
+    # pedestal_costs instead, where the control ZEROES random cells, prints 94% where the
+    # operation described gives 20%, and the prose and the table then disagree about one
+    # measurement.
     ap_ = attrib["per_seed"]
     worse = 100 * np.mean([np.mean(np.asarray(r["null_aad"]) > r["base_aad"])
                            for r in ap_.values()])
     n_draw, n_seed = int(attrib["n_null"]), len(ap_)
-    # --- 8: две стороны одной подстановки, с собственным плацебо --------------------------
+    # --- 8: the two sides of one substitution, with its own placebo -----------------------
     g_lrn = np.array([v["aad"] for v in idac["arms"]["learned"]["per_seed"].values()])
     g_ref = float(idac["arms"]["reference_vt2005"]["aad_mean"])
     x_pen = chan["solvent_only"]["mean"]
@@ -176,7 +177,7 @@ def main() -> int:
         "\\midrule\n" + body + "\\bottomrule\n\\end{tabular}\n\\end{table*}\n")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(tex, encoding="utf8")
-    print(f"записано: {OUT.relative_to(ROOT)}  ({len(rows)} строк)")
+    print(f"written: {OUT.relative_to(ROOT)}  ({len(rows)} rows)")
     for q, _, r, _ in rows:
         print(f"  {q[:52]:54s} {r[:70]}")
     return 0

@@ -106,7 +106,7 @@ def _prepare_forward_kwargs(
     """Build optional forward kwargs required by the current model config.
 
     ``temperature`` is required rather than defaulted: the UNIFAC prior below is temperature
-    dependent, and until 2026-08-23 this function read a name ``T`` that was never in its scope --
+    dependent, and an earlier form of this function read a name ``T`` never in its scope --
     an F821 that raised NameError for anyone running with ``use_unifac_gamma_prior: true``, which
     two committed configs set. A default would have hidden the same bug behind a wrong number.
     """

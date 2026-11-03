@@ -42,7 +42,7 @@ REFSTATE = ROOT / "results/reference_state_violation/summary.json"
 
 
 def test_reference_profile_is_mostly_exact_zeros():
-    """Премиса связки 3, которая как раз ВЕРНА: нулей в эталоне действительно много."""
+    """The part of the premise that is TRUE: the reference really does carry many zeros."""
     d = json.loads(FLOOR.read_text(encoding="utf8"))
     assert d["share_reference_zero_cells"] > 0.5
     assert d["median_zero_bins_per_molecule"] >= 25
@@ -56,31 +56,31 @@ def test_softmax_does_not_bind_on_any_seed_or_role():
     for s, roles in ps.items():
         for role, st in roles.items():
             assert st["orders_between_min_and_zero_bin_median"] > 2.0, (
-                f"сид {s} {role}: разница между минимальной массой бина и медианой в "
-                f"эталонно-нулевых бинах всего "
-                f"{st['orders_between_min_and_zero_bin_median']:.1f} порядка -- если это упало "
-                "ниже двух, софтмакс связывает и связку 3 надо перечитать"
+                f"seed {s} {role}: the gap between the smallest bin mass and the median in "
+                f"reference-zero bins is only "
+                f"{st['orders_between_min_and_zero_bin_median']:.1f} orders; below two the "
+                "softmax would be binding and this reading must be re-examined"
             )
             assert st["min_bin_mass_anywhere"] < 1e-7, (
-                f"сид {s} {role}: голова нигде не доходит ниже "
-                f"{st['min_bin_mass_anywhere']:.2e}; тогда у неё действительно пол"
+                f"seed {s} {role}: the head never goes below "
+                f"{st['min_bin_mass_anywhere']:.2e}, so it does have a floor after all"
             )
             assert st["share_of_zero_bins_below_1e_5"] > 0.3
 
 
 def test_pedestal_is_learned_not_architectural():
-    """Нулевое плечо: необученная голова той же архитектуры."""
+    """The null arm: an untrained head of the same architecture."""
     d = json.loads(FLOOR.read_text(encoding="utf8"))
     null = d["untrained_null"]["pedestal_median"]
     assert null > 0.4, (
-        f"необученный пьедестал {null:.3f} -- если он низкий, то различать выученное от "
-        "архитектурного этим плечом нельзя"
+        f"the untrained pedestal is {null:.3f}; if it were low, this arm could not separate what is "
+        "learned from what is architectural"
     )
     trained = [r[role]["pedestal_median"] for r in d["per_seed"].values()
                for role in ("solute", "solvent")]
     assert max(trained) < 0.1 * null, (
-        f"обучение обязано двигать пьедестал на порядок: худший обученный {max(trained):.4f} "
-        f"против необученного {null:.4f}"
+        f"training must move the pedestal by an order of magnitude: worst trained {max(trained):.4f} "
+        f"against untrained {null:.4f}"
     )
 
 
@@ -90,45 +90,45 @@ def test_zeroing_the_pedestal_buys_nothing_and_flips_sign():
     assert len(ps) == 5 and d["n_null"] >= 20
     rec = np.array([r["recovered_zero_pedestal"] for r in ps.values()])
     assert rec.min() < 0.0 < rec.max(), (
-        f"знак обязан меняться по сидам ({100 * rec.min():+.1f}..{100 * rec.max():+.1f}%): "
-        "именно это делает величину неизмеримой, а не малой"
+        f"the sign must change across seeds ({100 * rec.min():+.1f}..{100 * rec.max():+.1f}%): that "
+        "is what makes the quantity unmeasured rather than small"
     )
     assert rec.mean() < 0.2, (
-        f"снятие пьедестала возвращает {100 * rec.mean():+.1f}% разрыва; если это выросло, "
-        "ворота 2 изменились и нуль-способную голову надо пересмотреть"
+        f"removing the pedestal recovers {100 * rec.mean():+.1f}% of the gap; if that has grown, the "
+        "gate has changed and a zero-capable head should be reconsidered"
     )
 
 
 def test_the_positive_closure_error_lives_in_the_reference_nonzero_bins():
-    """Тот самый позитив, который заменяет оба плеча T2."""
+    """The positive result that replaces both planned arms."""
     d = json.loads(COSTS.read_text(encoding="utf8"))
     ps = d["per_seed"]
     rec = np.array([r["recovered_fix_nonzero"] for r in ps.values()])
     assert np.all(rec > 0.6), (
-        f"починка эталонно-НЕнулевых бинов обязана возвращать основную часть разрыва на всех "
-        f"пяти сидах, получено {np.round(100 * rec, 1)}%"
+        f"repairing the reference-NONZERO bins must recover most of the gap on all five seeds, "
+        f"got {np.round(100 * rec, 1)}%"
     )
     assert rec.mean() > 0.8
-    # нулевое плечо: обнуление того же ЧИСЛА случайных клеток
+    # the null arm: zeroing the same NUMBER of randomly chosen cells
     nulls = np.array([np.mean(r["null_recovered"]) for r in ps.values()])
     assert nulls.max() < -1.0, (
-        f"нуль обязан быть катастрофическим ({np.round(100 * nulls, 0)}%): иначе 'место "
-        "пьедестала правильное' не измерено"
+        f"the null must be catastrophic ({np.round(100 * nulls, 0)}%), or the claim that the "
+        "pedestal sits in the right place is not measured"
     )
-    # неаддитивность печатается, а не замалчивается
+    # the non-additivity is printed rather than passed over
     na = np.array([r["non_additivity"] for r in ps.values()])
     assert np.abs(na).max() > 0.1, (
-        "если разложение стало аддитивным, предыдущее измерение неаддитивности опровергнуто "
-        "и его надо перечитать"
+        "if the decomposition has become additive, the earlier measurement of non-additivity is "
+        "refuted and must be re-examined"
     )
 
 
 def test_role_invariance_would_make_link_4_a_tautology():
-    """Один профиль с обеих сторон даёт ln gamma = 0 РОВНО -- значит плечо не измеряет связку."""
+    """One profile on both sides gives ln gamma = 0 EXACTLY, so the arm measures nothing here."""
     d = json.loads(REFSTATE.read_text(encoding="utf8"))
     assert d["gate1_control_is_zero"] is True
     for s, r in d["per_seed"].items():
         assert r["control_max_abs"] == 0.0, (
-            f"сид {s}: контроль с одним профилем даёт {r['control_max_abs']!r}, не нуль -- "
-            "тогда роль-инвариантность НЕ тождество и плечо снова имеет структурное чтение"
+            f"seed {s}: the one-profile control gives {r['control_max_abs']!r} rather than zero, so "
+            "role invariance is NOT an identity and the arm has a structural reading again"
         )

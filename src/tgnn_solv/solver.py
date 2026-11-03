@@ -175,15 +175,14 @@ def _iterate_cosmo_sac_fixed_point(
     BLOCKING host synchronisation: the CPU stalls until the queued GPU work drains, n_iter
     times per forward.
 
-    HOW MUCH THAT COSTS, MEASURED RATHER THAN REASONED: 1.03x, and the first version of this
-    comment claimed much more. The argument was that the flush destroys the CPU run-ahead
-    which hides this path's Python dispatch cost -- but the A/B on a Kaggle T4
-    (``scripts/kaggle/make_speedup_notebook.py``, 2026-10-02) put the sync-only arm at 372.9
-    against 384.9 ms/step. The reasoning was self-defeating: if the binding constraint IS the
-    CPU issuing kernels, then the CPU never gets ahead of the GPU in the first place, so there
-    is no run-ahead for a sync to destroy and the flush only drains a short queue. The real
-    win in that A/B came from the stacked segment solve (1.35x) and from compiling the segment
-    loop (1.75x together); this flag contributes the remaining few percent.
+    HOW MUCH THAT COSTS, MEASURED RATHER THAN REASONED: 1.03x. One might expect more, on the
+    argument that the flush destroys the CPU run-ahead which hides this path's Python dispatch
+    cost, but that argument is self-defeating: if the binding constraint is the CPU issuing
+    kernels, the CPU never gets ahead of the GPU, so there is no run-ahead to destroy and the
+    flush drains a short queue. An A/B on a T4 puts the sync-only arm at 372.9 against 384.9
+    ms/step. The speedups on that path come from the stacked segment solve (1.35x) and from
+    compiling the segment loop (1.75x together); this flag contributes the remaining few
+    percent.
 
     It is still worth having, because the exit buys nothing to pay even that. ``scripts/analysis/run_solver_break_audit.py``
     traced the batch-max residual on 8103 real learned profile pairs and it never once reached

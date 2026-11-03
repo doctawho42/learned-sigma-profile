@@ -71,7 +71,7 @@ def main() -> int:
     for x in have:
         r = np.asarray(table[canonicalize(x)][0], float)
         REF[x] = r / max(r.sum(), 1e-30)
-    print(f"записей {len(d)}, молекул {len(mols)}, с эталоном {len(have)}")
+    print(f"records {len(d)}, molecules {len(mols)}, with a reference {len(have)}")
     tpl = pd.read_csv(ROOT / "notebooks/data/processed/test.csv", nrows=1, low_memory=False)
     rng = np.random.default_rng(a.seed)
     res = {"n_records": int(len(d)), "n_null": a.n_null, "per_seed": {}}
@@ -102,7 +102,7 @@ def main() -> int:
                     elif mode == "full":
                         sh = REF[x].copy()
                     elif mode == "null":
-                        # снять массу из того же ЧИСЛА случайных клеток
+                        # remove mass from the same NUMBER of randomly chosen cells
                         idx = draw[:int(z.sum())]
                         sh[idx] = 0.0
                     q[x] = (sh / max(sh.sum(), 1e-30)) * A
@@ -128,36 +128,36 @@ def main() -> int:
         row["null_recovered"] = [float((base - x) / max(gap, 1e-30)) for x in nulls]
         res["per_seed"][str(s)] = row
         nr = np.asarray(row["null_recovered"])
-        print(f"\nсид {s}: база {base:.4f}, вся форма {row['aad_full']:.4f} (разрыв {gap:.4f})")
-        print(f"  обнулён пьедестал: {row['aad_zero_pedestal']:.4f}  "
-              f"возвращено {100 * row['recovered_zero_pedestal']:+.1f}%")
-        print(f"  починены НЕнулевые: {row['aad_fix_nonzero']:.4f}  "
-              f"возвращено {100 * row['recovered_fix_nonzero']:+.1f}%")
-        print(f"  сумма частей минус целое (неаддитивность): {100 * row['non_additivity']:+.1f}%")
-        print(f"  НУЛЬ (столько же случайных клеток): {100 * nr.mean():+.1f}% в среднем, "
+        print(f"\nseed {s}: base {base:.4f}, whole shape {row['aad_full']:.4f} (gap {gap:.4f})")
+        print(f"  pedestal zeroed: {row['aad_zero_pedestal']:.4f}  "
+              f"recovered {100 * row['recovered_zero_pedestal']:+.1f}%")
+        print(f"  nonzero bins repaired: {row['aad_fix_nonzero']:.4f}  "
+              f"recovered {100 * row['recovered_fix_nonzero']:+.1f}%")
+        print(f"  sum of parts minus the whole (non-additivity): {100 * row['non_additivity']:+.1f}%")
+        print(f"  NULL (the same number of random cells): {100 * nr.mean():+.1f}% on average, "
               f"{100 * nr.min():+.1f}...{100 * nr.max():+.1f}%; "
               f"p = {float((nr >= row['recovered_zero_pedestal']).mean()):.3f}")
 
     ks = list(res["per_seed"])
     if ks:
-        print(f"\n{'=' * 78}\nСВОДКА по {len(ks)} сидам")
+        print(f"\n{'=' * 78}\nSUMMARY over {len(ks)} seeds")
         for k in ("recovered_zero_pedestal", "recovered_fix_nonzero", "non_additivity"):
             v = np.array([res["per_seed"][x][k] for x in ks])
-            print(f"  {k:26s}: {100 * v.mean():+6.1f}%  посидово "
+            print(f"  {k:26s}: {100 * v.mean():+6.1f}%  per seed "
                   f"{100 * v.min():+.1f}...{100 * v.max():+.1f}%")
         nv = np.array([np.mean(res["per_seed"][x]["null_recovered"]) for x in ks])
-        print(f"  {'null':26s}: {100 * nv.mean():+6.1f}%  посидово "
+        print(f"  {'null':26s}: {100 * nv.mean():+6.1f}%  per seed "
               f"{100 * nv.min():+.1f}...{100 * nv.max():+.1f}%")
         ad = np.array([res["per_seed"][x]["aad_zero_pedestal"] - res["per_seed"][x]["base_aad"]
                        for x in ks])
-        print(f"\n  ЦЕНА ПЬЕДЕСТАЛА в единицах AAD: {ad.mean():+.4f} "
-              f"(посидово {ad.min():+.4f}...{ad.max():+.4f}); "
-              f"сидовый пол референсного плеча 0.0632")
+        print(f"\n  COST OF THE PEDESTAL in AAD units: {ad.mean():+.4f} "
+              f"(per seed {ad.min():+.4f}...{ad.max():+.4f}); "
+              f"the reference arm's seed spread is 0.0632")
 
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "pedestal_costs.json").write_text(json.dumps(res, ensure_ascii=False, indent=2),
                                                encoding="utf8")
-    print(f"\nзаписано: {a.out / 'pedestal_costs.json'}")
+    print(f"\nwritten: {a.out / 'pedestal_costs.json'}")
     return 0
 
 

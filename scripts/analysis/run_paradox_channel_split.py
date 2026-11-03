@@ -19,7 +19,7 @@ recomputed rule is checked against them.
 The results root is a flag. Default is the published tree; point `--root` at
 results/e5_sigma_grounding_leakfree to discharge the leak-free re-run with the same command.
 
-Reproduces, on the published tree at three seeds (verified 2026-08-10):
+Reproduces, on the published tree at three seeds:
   neither -0.000 +- 0.000 (n=37), solvent-only +0.431 +- 0.036 (n=5274), both +0.006 +- 0.025 (n=297)
   agreement bound on the neither rows: max |MAE difference| = 3.7e-6 (<= 5e-6)
 `--expect-published` asserts exactly that and exits non-zero otherwise.

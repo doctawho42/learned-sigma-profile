@@ -47,7 +47,7 @@ def save(fig, name: str) -> None:
     FIGS.mkdir(parents=True, exist_ok=True)
     for ext in ("pdf", "png"):
         fig.savefig(FIGS / f"{name}.{ext}", dpi=600, bbox_inches="tight")
-    print(f"  записано: paper/figs/{name}.pdf и .png")
+    print(f"  written: paper/figs/{name}.pdf and .png")
 
 
 def ecdf(x: np.ndarray):
@@ -62,7 +62,7 @@ def fig_pedestal(plt) -> None:
         1, 2, figsize=(DOUBLE_COL_PT / 72.0, 2.25),
         gridspec_kw={"width_ratios": [1.5, 1.0], "wspace": 0.42})
 
-    # (a) где на самом деле лежит масса в эталонно-нулевых клетках
+    # (a) where the mass in reference-zero cells actually sits
     for i, s in enumerate(SEEDS):
         for role in ("solute", "solvent"):
             k = f"zero_bins_seed{s}_{role}"
@@ -83,7 +83,7 @@ def fig_pedestal(plt) -> None:
     axa.legend(frameon=False, fontsize=5.5, loc="upper left")
     axa.set_title("(a) mass placed where the reference has none", loc="left", fontsize=6.5)
 
-    # (b) суммарный пьедестал по молекулам
+    # (b) the pedestal summed over each molecule
     pos, labels, data = [], [], []
     for j, role in enumerate(("solute", "solvent")):
         vals = np.concatenate([z[f"pedestal_seed{s}_{role}"] for s in SEEDS
@@ -114,7 +114,7 @@ def fig_pedestal(plt) -> None:
 
 def fig_cost_map(plt) -> None:
     w = json.loads(WEIGHTS.read_text(encoding="utf8"))
-    g = np.asarray(w["sigma_grid"], float) * 1e3           # e/nm^2 -> удобная шкала подписи
+    g = np.asarray(w["sigma_grid"], float) * 1e3           # e/nm^2, a convenient scale for the axis label
     b = w["by_rows"]["train"]
     per = [np.asarray(v["R"], float) for v in b["per_seed"].values()]
     R = np.stack(per)
@@ -154,8 +154,8 @@ def fig_attribution(plt) -> None:
     c = json.loads(COSTS.read_text(encoding="utf8"))["per_seed"]
     a = json.loads(ATTRIB.read_text(encoding="utf8"))["per_seed"]
     fig, (axa, axb) = plt.subplots(
-        # 6.5 in, а не полные 7.0: общая подпись оси лежит ВНЕ осей, и при bbox_inches="tight"
-        # холст в 7.0 даёт 515 pt против предела спецификации в 504.
+        # 6.5 in rather than the full 7.0: the shared axis label sits OUTSIDE the axes, and
+        # with bbox_inches="tight" a 7.0 canvas prints at 515 pt against the 504 pt limit.
         1, 2, figsize=(6.5, 2.15),
         gridspec_kw={"width_ratios": [1.0, 1.0], "wspace": 0.60})
 
@@ -206,7 +206,7 @@ def main() -> int:
     ap.add_argument("--only", choices=["pedestal", "cost", "attribution"], default=None)
     a = ap.parse_args()
     face = apply()
-    print(f"гарнитура: {face}")
+    print(f"typeface: {face}")
     import matplotlib.pyplot as plt
     if a.only in (None, "pedestal"):
         fig_pedestal(plt)

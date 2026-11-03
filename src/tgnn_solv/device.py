@@ -59,7 +59,7 @@ already being on a list. An argparse default has to be a statement about the mac
 not a wish.
 
 Reading the machine is silent in one direction only. `default_device` returning `"cuda"`
-needs no announcement; returning `"cpu"` is either unremarkable or the whole 2026-08-08
+needs no announcement; returning `"cpu"` is either unremarkable or the whole
 failure, and the two are told apart by asking whether the box has an NVIDIA GPU at all.
 A MacBook has none, and prints nothing. A gate box whose kernel module went missing
 still has its V100 sitting on the PCI bus, and gets a block of tagged lines between
@@ -189,7 +189,7 @@ def _announce_cpu_default() -> None:
         f"display device{plural} {'is' if count == 1 else 'are'} on its PCI bus. "
         f"The card is here; CUDA is not usable. Check `nvidia-smi` first. "
         f"{diagnosis} "
-        f"On 2026-08-08 this exact state cost the gate box ten hours at ~15 s/it "
+        f"This exact state has cost a gate box ten hours at about 15 s/it "
         f"against ~1 s/it on its V100, with no error and no wrong number. "
         f"This is the argparse default, computed before your flags are parsed: it "
         f"refuses nothing, and a --device cuda you typed yourself still raises. "
@@ -244,7 +244,7 @@ def resolve_device(
     """Resolve a requested device, refusing to substitute CPU for an accelerator.
 
     The fallback used to be silent-ish: one WARNING line, then 300 KB of tqdm output on
-    top of it. On 2026-08-08 a kernel upgrade left the gate box without its NVIDIA
+    top of it. A kernel upgrade can leave a gate box without its NVIDIA
     module, six `--device cuda` runs fell through to CPU, and they trained for ten hours
     at 15 s/it against ~1 s/it on the V100 -- roughly two months to a result -- without
     a single error line. An accelerator asked for by name and quietly not delivered is

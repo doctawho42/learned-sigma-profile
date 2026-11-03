@@ -196,13 +196,14 @@ class TGNNSolvConfig:
     cosmo_sac_wire_volume: bool = False  # feed (detached) molar volume so the SG combinatorial term is active
     cosmo_sac_gamma_iter_train: int = 16  # bumped from 8: n=8 failed convergence test (gap 5.86 ln-units at 273K); n=16 converges to within 6e-5 of n=30
     cosmo_sac_gamma_iter_eval: int = 30
-    # ПРОВЕРКА СХОДИМОСТИ, ВЫКЛЮЧЕНА ПО УМОЛЧАНИЮ. Счётчики выше фиксированы, и до 2026-09-30
-    # сходимость к неподвижной точке нигде не проверялась -- она ПРЕДПОЛАГАЛАСЬ. Комментарий у
-    # iter_train («n=16 сходится с точностью 6e-5 до n=30») сравнивает два счётчика МЕЖДУ СОБОЙ,
-    # а не с пределом. Измерено (results/segment_convergence): предел достигается к n~300, а при
-    # n=30 медианная строка сошлась до машинной точности, но 39% строк несут >0.01 ln-единиц
-    # ошибки итерации, худшая 0.073 на депонированном профиле и 0.162 на выученном.
-    # Флаг включает запись невязки в layer.last_convergence и НЕ меняет арифметику.
+    # CONVERGENCE CHECK, OFF BY DEFAULT. The iteration counts above are fixed, and agreement
+    # between two counts is not convergence to the fixed point: the note at iter_train, that
+    # n=16 agrees with n=30 to 6e-5, compares two counts WITH EACH OTHER rather than with the
+    # limit. Measured in results/segment_convergence: the limit is reached by about n=300, and
+    # at n=30 the median row has converged to machine precision while 39% of rows carry more
+    # than 0.01 ln-units of iteration error, the worst 0.073 on the deposited profile and 0.162
+    # on the learned one. This flag records the residual in layer.last_convergence and does NOT
+    # change the arithmetic.
     cosmo_sac_track_convergence: bool = False
     # Tier-3 closure-fix crossover experiment (constructive complement to the grounding paradox).
     cosmo_sac_kernel_residual_rank: int = 0         # Arm C: R>0 enables the LR-SKR learnable delta_w residual (K=52R)
@@ -213,21 +214,23 @@ class TGNNSolvConfig:
     sigma_area_scale: float = 75.0  # ~pool sigma_area std; see P0 loss rebalance
     sigma_area_min: float = 20.0
     sigma_shape_weight: float = 1.0  # weight on the SUM-EMD shape term
-    # G4: ПОЛ на члене формы sigma-супервизии -- shape_loss := relu(shape_loss - floor).
-    # Выше пола градиент в точности прежний, на полу и ниже -- в точности нуль, то есть это
-    # буквально "спускаться до заданной глубины и остановиться". 0.0 отключает ветвь целиком.
+    # A FLOOR on the shape term of the sigma supervision: shape_loss := relu(shape_loss - floor).
+    # Above the floor the gradient is exactly unchanged; at the floor and below it is exactly
+    # zero, which is literally "descend to a given depth and stop". 0.0 disables the branch.
     #
-    # ОТКУДА ЧИСЛО. results/g4_descent_depth: спуск к депонированному профилю улучшает AAD на
-    # IDAC с 1.3142 до 0.8201, но у всех пяти сидов есть ВНУТРЕННИЙ оптимум по глубине (ни
-    # одного на краю сетки), и дальше оценка портится. Выигрыш от глубины +0.5490 +- 0.1129,
-    # положителен 5/5. Оптимум лежит при EMD 0.3986 +- 0.0442 (разброс 11%); перенос через
-    # долю снятого даёт 0.4457, то есть выбор внутри собственного разброса порога и потому не
-    # несущий. Единицы совпадают: в обучающем потоке мишень нормирована на сумму 1 (проверено
-    # -- все строки ровно 1.0), предсказание есть softmax, и G4 мерил ровно это.
+    # WHERE THE NUMBER COMES FROM. In results/g4_descent_depth, descending toward the deposited
+    # profile improves the IDAC AAD from 1.3142 to 0.8201, but all five seeds have an INTERIOR
+    # optimum in depth, none at the edge of the grid, and beyond it the score degrades. The gain
+    # from depth is +0.5490 +- 0.1129 and positive on 5 of 5. The optimum lies at EMD
+    # 0.3986 +- 0.0442, an 11% spread; carrying it across by the share removed gives 0.4457, so
+    # the choice sits inside the threshold's own spread and carries nothing. The units agree: in
+    # the training stream the target is normalised to sum to one, every row exactly 1.0, the
+    # prediction is a softmax, and the sweep measured that same quantity.
     #
-    # НАПРАВЛЕНИЕ ПРОВЕРЕНО НУЛЯМИ ПО МИШЕНИ, а не предположено: спуск на то же расстояние к
-    # мишени с той же гистограммой масс и перемешанными бинами ПОРТИТ AAD монотонно (до
-    # 2.6987), случайная мишень тоже -- у обоих нулей лучшее, что они могут, это не двигаться.
+    # THE DIRECTION IS CHECKED AGAINST TARGET NULLS rather than assumed: descending the same
+    # distance toward a target with the same mass histogram and shuffled bins DEGRADES the AAD
+    # monotonically, to 2.6987, and so does a random target; under both nulls the best available
+    # move is not to move.
     sigma_shape_floor: float = 0.0
     # Sigma-profile external aux supervision stream.
     sigma_aux_steps_per_epoch: int = 0
@@ -236,39 +239,40 @@ class TGNNSolvConfig:
     sigma_aux_phase3_weight: Optional[float] = None
     sigma_aux_symmetrize: bool = True  # ground solute AND solvent role embeddings
     sigma_profile_loss: str = "emd"  # "emd" (1-D Wasserstein) or "mse"
-    # T1: путь к .npy с вектором ПО-БИНОВЫХ весов форменного члена sigma-супервизии (длина
-    # n_bins). None -- невзвешенный член, битово прежний.
+    # Path to a .npy holding the PER-BIN weight vector of the shape term of the sigma
+    # supervision, of length n_bins. None leaves the term unweighted and bit-identical.
     #
-    # ОТКУДА ВЕКТОР. results/per_bin_sensitivity_weights: цена замыкания за размещение массы
-    # измерена ПО КОНЕЧНОЙ РАЗНОСТИ по каждому бину (градиентная карта для этого запрещена её
-    # же выводом -- завышает вчетверо и сидонеустойчива), и вес есть дискретный градиент этого
-    # потенциала. Взвешенный член остаётся 1-D Вассерштейном -- по метрике, в которой
-    # расстояние между соседними узлами сетки равно w_k, -- а невзвешенный оказывается частным
-    # случаем w = const.
+    # WHERE THE VECTOR COMES FROM. In results/per_bin_sensitivity_weights the closure's cost for
+    # placing mass is measured BY FINITE DIFFERENCE in each bin; a gradient map is ruled out for
+    # this purpose by its own output, since it overstates the ratio fourfold and is unstable
+    # across seeds. The weight is the discrete gradient of that potential. The weighted term is
+    # still a one-dimensional Wasserstein distance, under the metric in which adjacent grid
+    # points sit at distance w_k, and the unweighted term is the special case w = const.
     #
-    # ПОВЕРХНОСТЬ ВЕСА И ПОВЕРХНОСТЬ ЧЛЕНА. Вектор выведен под режим "emd" (цена ПЕРЕНОСА через
-    # границу бинов). В режиме "mse" слагаемые живут на другой поверхности -- цене РАЗМЕЩЕНИЯ в
-    # бине, -- и тот же вектор там стоит не на своей поверхности.
+    # THE SURFACE THE WEIGHT WAS MEASURED ON, AND THE SURFACE IT GATES. The vector is derived
+    # for the "emd" mode, where the cost is that of MOVING mass across a bin boundary. In "mse"
+    # mode the summands live on a different surface, the cost of PLACING mass in a bin, and the
+    # same vector there sits on a surface it was not measured on.
     sigma_shape_bin_weights: Optional[str] = None
     sigma_val_data: Optional[str] = None  # path to sigma-profile val set for warmup early-stop
     freeze_sigma_head_during_sle: bool = False  # freeze head_sigma in SLE phases 2/3 to hold the σ-manifold
-    # ПЛЕЧО "ЗАМОРОЖЕННОЕ ПРОМЕЖУТОЧНОЕ". Профиль и площадь уходят в замыкание ДЕТАЧЕННЫМИ, то
-    # есть градиент потери по растворимости до σ-головы не доходит вовсе, тогда как внешняя
-    # σ-супервизия продолжает её обучать. Это и есть конструкция ближайшего предшественника
-    # (yang2025tennet), где предсказатель профиля обучен по квантовой химии и заморожен, и
-    # единственное место, где статья даёт рекомендацию без измерения.
+    # THE "FROZEN INTERMEDIATE" ARM. The profile and the area enter the closure DETACHED, so the
+    # gradient of the solubility loss does not reach the sigma head at all, while the external
+    # sigma supervision continues to train it. That is the construction of the nearest prior
+    # model, in which the profile predictor is trained on quantum chemistry and then frozen.
     #
-    # ПОЧЕМУ НЕ freeze_sigma_head_during_sle. Тот замораживает ВЕСА головы, но энкодер под ней
-    # продолжает учиться от растворимости, так что профиль всё равно движется. Детач режет путь,
-    # а не параметры, и потому отвечает на поставленный вопрос.
+    # WHY NOT freeze_sigma_head_during_sle. That freezes the head's WEIGHTS, but the encoder
+    # beneath it keeps learning from solubility, so the profile moves anyway. Detaching cuts the
+    # path rather than the parameters, and so answers the question as posed.
     #
-    # Прецедент в этом же файле: объём уходит в комбинаторный член детаченным по той же причине.
+    # Precedent in this same file: the volume enters the combinatorial term detached for the
+    # same reason.
     sigma_detached_from_closure: bool = False
-    # ПЛЕЧО "РОЛЬ-ИНВАРИАНТНАЯ ГОЛОВА". σ-голова читает представление, посчитанное с ОДНОЙ ролью
-    # для обеих молекул, поэтому соединение получает один профиль независимо от того, с какой
-    # стороны пары оно стоит. Закрывает возражение "нарушение референсного состояния есть
-    # следствие вашего же выбора": под этим переключателем γ(i в i) = 1 выполняется тождественно.
-    # Стоит одного лишнего прохода энкодера на батч.
+    # THE "ROLE-INVARIANT HEAD" ARM. The sigma head reads a representation computed with ONE
+    # role for both molecules, so a compound receives one profile whichever side of the pair it
+    # occupies. This addresses the objection that the reference-state violation follows from the
+    # pipeline's own design choice: under this switch gamma(i in i) = 1 holds identically. It
+    # costs one extra encoder pass per batch.
     sigma_role_invariant: bool = False
     # Train-time TRUE-σ injection (disambiguates the eval-only oracle floor: does the
     # crystal/correction branch co-adapt to correct σ, or is COSMO-SAC misspecified?).

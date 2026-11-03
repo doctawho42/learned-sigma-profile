@@ -1459,7 +1459,7 @@ def _segment_matvec(p: Tensor, E: Tensor) -> Tensor:
     construction here, but the transpose is written out instead of relied upon.
 
     Why it matters: a COSMO-SAC forward is launch-bound, not flop-bound. Measured on a Kaggle
-    T4 (``scripts/kaggle/make_bottleneck_notebook.py``, 2026-10-02) the loader delivers
+    T4 the loader delivers
     648-714 rows/s while the compute ceiling is 193 rows/s at 331 ms/step for batch 64 -- with
     the GPU only 25% busy (p90 34%). The work per kernel is tiny (64x51x51); the cost is
     issuing ~1.8k of them per step from Python.
@@ -1507,7 +1507,7 @@ class CosmoSacLayer(nn.Module):
         self.exp_clamp = g("tau_clamp", 30.0)
         self.eps = g("eps", 1e-10)
         self.track_convergence = gb("cosmo_sac_track_convergence", False)
-        #: Заполняется только при track_convergence; см. _segment_ln_gamma.
+        #: Populated only when track_convergence is on; see _segment_ln_gamma.
         self.last_convergence: dict[str, float] | None = None
 
         sigma_grid = torch.linspace(sigma_min, sigma_max, n_bins)
@@ -1571,14 +1571,15 @@ class CosmoSacLayer(nn.Module):
 
     def _fixed_point_residual(self, p_norm: Tensor, E: Tensor, gamma: Tensor,
                               n_iter: int) -> dict[str, float]:
-        """Невязка неподвижной точки, ВЗВЕШЕННАЯ ПО МАССЕ профиля.
+        """Fixed-point residual, WEIGHTED BY THE PROFILE MASS.
 
-        В точке решения Gamma_m * sum_n p_n Gamma_n E_mn = 1 для каждого бина. Брать максимум
-        этого выражения ПО ВСЕМ бинам бессмысленно и даёт ~1.0 даже после 20000 итераций: в
-        пустых бинах Gamma вырождена (делится на ~eps, упирается в clamp 1e8), а в итоговую
-        свёртку она входит с весом p и потому на результат не влияет. Диагностика 2026-09-30
-        сначала мерила именно так и читалась как «не сходится» -- ошибка была в метрике, а не в
-        решателе. Поэтому невязка взвешивается тем же весом, с каким бин входит в ответ.
+        At the solution Gamma_m * sum_n p_n Gamma_n E_mn = 1 holds for every bin. Taking the
+        maximum of that expression over ALL bins is not meaningful and returns about 1.0 even
+        after twenty thousand iterations: in empty bins Gamma is degenerate, dividing by
+        something near eps and saturating the 1e8 clamp, while entering the final sum with
+        weight p and so not affecting the result at all. A residual measured that way reads as
+        a solver that does not converge when the defect is in the metric. The residual is
+        therefore weighted by the same weight with which a bin enters the answer.
         """
         with torch.no_grad():
             den = _segment_matvec(p_norm * gamma, E)

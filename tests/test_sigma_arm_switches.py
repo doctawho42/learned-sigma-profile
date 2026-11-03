@@ -1,4 +1,4 @@
-r"""Bind the two arm switches that answer the reviewer's two open objections.
+r"""Bind the two arm switches, each of which answers one standing objection to the pipeline.
 
 WHY THESE EXIST
 ---------------
@@ -38,7 +38,7 @@ from sigma_fixtures import first_batch, make_tiny_cosmo_trainer_and_loader  # no
 
 
 def _forward(cfg_updates: dict):
-    """Один и тот же батч и те же веса, меняется только переключатель."""
+    """The same batch and the same weights; only the switch changes."""
     torch.manual_seed(0)
     trainer, loader = make_tiny_cosmo_trainer_and_loader()
     batch = first_batch(loader)
@@ -57,7 +57,7 @@ def test_switch_off_is_a_bitwise_no_op(switch):
     _, out_s = _forward({switch: False})
     a, b = out_b["ln_x2"].detach(), out_s["ln_x2"].detach()
     assert torch.equal(a, b), (
-        f"{switch}=False сдвинул выход: плечо перестаёт быть контрастом одного отличия"
+        f"{switch}=False moved the output: the arm stops being a contrast of a single difference"
     )
 
 
@@ -69,30 +69,30 @@ def test_detach_cuts_the_solubility_gradient_but_not_the_supervision():
     reached = [p.grad is not None and bool(p.grad.abs().sum() > 0)
                for p in head.parameters()]
     assert not any(reached), (
-        "градиент потери по растворимости дошёл до σ-головы, хотя путь детачен"
+        "the gradient of the solubility loss reached the sigma head although the path is detached"
     )
-    # внешняя супервизия обязана продолжать её обучать: иначе плечо просто ломает голову
+    # the external supervision must keep training it, or the arm merely breaks the head
     model.zero_grad(set_to_none=True)
     out["nrtl_params"]["sigma_shape_solute"].sum().backward()
     assert any(p.grad is not None and bool(p.grad.abs().sum() > 0)
                for p in head.parameters()), (
-        "σ-супервизия тоже не доходит: детач срезал обе тяги вместо одной"
+        "the sigma supervision does not reach it either: the detach cut both pulls, not one"
     )
 
 
 def test_detach_off_does_let_the_solubility_gradient_through():
-    """Контроль к предыдущему: без переключателя градиент ОБЯЗАН доходить."""
+    """Control for the previous test: without the switch the gradient MUST arrive."""
     model, out = _forward({"sigma_detached_from_closure": False})
     model.zero_grad(set_to_none=True)
     out["ln_x2"].sum().backward()
     assert any(p.grad is not None and bool(p.grad.abs().sum() > 0)
                for p in model.head_sigma.parameters()), (
-        "градиент не доходит даже без детача -- тогда первый тест ничего не проверяет"
+        "the gradient does not arrive even without the detach, so the first test checks nothing"
     )
 
 
 def test_role_invariance_gives_a_molecule_one_profile():
-    """Та же молекула с обеих сторон обязана получить ОДИН профиль."""
+    """The same molecule on both sides must receive ONE profile."""
     torch.manual_seed(0)
     trainer, loader = make_tiny_cosmo_trainer_and_loader()
     batch = first_batch(loader)
@@ -101,17 +101,17 @@ def test_role_invariance_gives_a_molecule_one_profile():
     model.eval()
     sol, _slv, targets = trainer._move_batch_to_device(batch)
     with torch.no_grad():
-        out = model(sol, sol, targets["T"], targets=targets)   # пара молекулы с собой
+        out = model(sol, sol, targets["T"], targets=targets)   # the molecule paired with itself
     a = out["nrtl_params"]["sigma_shape_solute"]
     b = out["nrtl_params"]["sigma_shape_solvent"]
     assert torch.allclose(a, b, atol=1e-6), (
-        f"профили двух ролей расходятся на {float((a - b).abs().max()):.2e}; "
-        "роль-инвариантность не достигнута"
+        f"the two role profiles differ by {float((a - b).abs().max()):.2e}; "
+        "role invariance is not achieved"
     )
 
 
 def test_without_role_invariance_the_two_profiles_differ():
-    """Контроль: иначе предыдущий тест прошёл бы и на сломанном переключателе."""
+    """Control: otherwise the previous test would pass with a broken switch too."""
     torch.manual_seed(0)
     trainer, loader = make_tiny_cosmo_trainer_and_loader()
     batch = first_batch(loader)
@@ -125,6 +125,6 @@ def test_without_role_invariance_the_two_profiles_differ():
     gap = float((np_["sigma_shape_solute"] - np_["sigma_shape_solvent"])
                 .abs().max())
     assert gap > 1e-6, (
-        "две роли дают один профиль даже без переключателя -- значит энкодер роль не читает, "
-        "и раздел о референсном состоянии надо перечитать"
+        "the two roles give one profile even without the switch, so the encoder does not read the "
+        "role at all and the reference-state section must be re-examined"
     )

@@ -35,23 +35,23 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dep", type=Path, default=DEP,
-                    help="каталог с per_molecule.csv; по умолчанию референсное плечо")
-    ap.add_argument("--label", default="reference", help="как назвать плечо в депозите")
+                    help="directory holding per_molecule.csv; defaults to the reference arm")
+    ap.add_argument("--label", default="reference", help="the name to give this arm in the deposit")
     a = ap.parse_args()
     dep = a.dep
-    # ВОРОТА ТОЛЬКО ДЛЯ РЕФЕРЕНСНОГО ПЛЕЧА: ожидаемые четыре значения измерены на нём, и
-    # применять их к другому плечу значило бы гейтить не ту поверхность.
+    # THE GATE APPLIES TO THE REFERENCE ARM ONLY: the four expected values were measured on it,
+    # and applying them to another arm would gate a surface they were not measured on.
     gate_on = dep.resolve() == DEP.resolve()
     d = pd.read_csv(dep / "per_molecule.csv")
     t = pd.read_csv(TEST, low_memory=False)
     if "has_solubility" not in t.columns:
-        raise SystemExit("test.csv без has_solubility: отбор по ln_x2.notna() и есть тот дефект")
+        raise SystemExit("test.csv has no has_solubility column; selecting by ln_x2.notna() is the defect itself")
     lab = t[t["has_solubility"].astype(bool)]
     keep = {canonicalize(str(s)) for s in pd.concat([lab.solute_smiles, lab.solvent_smiles])}
     d["key"] = [canonicalize(str(s)) for s in d.smiles]
     clean = d[d["key"].isin(keep)].copy()
     n_all, n_clean = d["key"].nunique(), clean["key"].nunique()
-    print(f"молекул в депозите {n_all}, из них встречаются в РАЗМЕЧЕННОЙ тестовой строке {n_clean}")
+    print(f"molecules in the deposit {n_all}, of which {n_clean} occur in a LABELLED test row")
 
     res = {"n_molecules_deposit": int(n_all), "n_molecules_clean": int(n_clean),
            "seeds": sorted(int(s) for s in d.seed.unique()), "median_enrichment": {}}
@@ -68,16 +68,16 @@ def main() -> int:
             mark = ""
             if want is not None:
                 ok = abs(v - want) < 0.02
-                mark = f"  ворота: {want} {'ok' if ok else 'РАСХОДИТСЯ'}"
+                mark = f"  gate: {want} {'ok' if ok else 'DISAGREES'}"
                 if not ok:
-                    bad.append(f"{role}/{region}: {v:.3f} против {want}")
-            print(f"  {role:8s} {region:9s} медиана обогащения {v:.3f}{mark}")
+                    bad.append(f"{role}/{region}: {v:.3f} against {want}")
+            print(f"  {role:8s} {region:9s} median enrichment {v:.3f}{mark}")
     if bad:
-        raise SystemExit("ворота не прошли: " + "; ".join(bad))
+        raise SystemExit("the gate did not pass: " + "; ".join(bad))
     (dep / "clean_pool.json").write_text(json.dumps(res, ensure_ascii=False, indent=2),
                                          encoding="utf8")
     res["arm"] = a.label
-    print(f"\nзаписано: {dep / 'clean_pool.json'}")
+    print(f"\nwritten: {dep / 'clean_pool.json'}")
     return 0
 
 

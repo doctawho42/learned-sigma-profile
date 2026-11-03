@@ -395,11 +395,11 @@ class TGNNSolv(nn.Module):
 
     @staticmethod
     def _graph_count(data) -> int:
-        """B без синхронизации хоста.
+        """B without a host synchronisation.
 
-        ``batch.max().item()`` -- чтение значения тензора на CPU, то есть полный останов
-        конвейера; ``ptr.numel()`` -- запрос формы, он бесплатен. Запасной путь оставлен для
-        данных без ``ptr`` (не ``Batch``), где синхронизация неизбежна, как и раньше.
+        ``batch.max().item()`` reads a tensor value on the CPU, which stalls the pipeline;
+        ``ptr.numel()`` asks for a shape and is free. The fallback is kept for data without
+        ``ptr``, where a synchronisation is unavoidable.
         """
         ptr = getattr(data, "ptr", None)
         if ptr is not None:
@@ -407,31 +407,27 @@ class TGNNSolv(nn.Module):
         return int(data.batch.max().item()) + 1
 
     def _to_dense_with_token(self, h_atoms: torch.Tensor, data, token: torch.Tensor):
-        """Плоское (N,D) -> плотное (B, N_max+1, D) с глобальным токеном сразу за атомами.
+        """Flat (N,D) -> dense (B, N_max+1, D) with the global token just after the atoms.
 
-        ЧТО ЭТО ЗАМЕНЯЕТ И ПОЧЕМУ. Раньше тот же результат собирался четырьмя питоновскими
-        циклами по графам: ``_split_atoms_by_graph`` резал плоский тензор B булевыми
-        индексациями, ``_append_global_token`` делал B вызовов ``cat``, ``pad_atom_features``
-        присваивала B срезов в нулевой тензор, а ``build_batch_from_lists`` собирала вектор
-        принадлежности из B вызовов ``full``. Профиль настоящего шага на T4 (2026-10-02,
-        results/real_step_profile/summary.json) показал, что именно этот класс операций и
-        составляет цену шага: 63% диспатчей растут РОВНО пропорционально батчу, то есть
-        платятся за каждую молекулу отдельно -- ``lift_fresh`` 49.2 на граф, ``detach_`` 46.3,
-        ``slice`` 19.5, ``Memcpy DtoD`` 14.5. Крупный батч такую цену не амортизирует по
-        построению: батч x8 дал всего x1.39 строк в секунду, а загрузка карты даже упала с
-        22% до 17%. Булева индексация вдобавок лоуэрится через ``nonzero`` (268 вызовов за
-        шаг при батче 64) и копирует счётчик на хост -- отсюда часть из 531.5 синхронизаций.
+        WHAT THIS REPLACES, AND WHY. The same result was previously assembled with four Python
+        loops over graphs, one boolean indexing per graph plus B calls each to ``cat``, to a
+        slice assignment, and to ``full``. A profile of a real training step showed that this
+        class of operation is the cost of the step: 63% of dispatches grow EXACTLY in proportion
+        to the batch, so they are paid per molecule. A larger batch cannot amortise that by
+        construction: an eightfold batch gave only 1.39 times the rows per second, and device
+        utilisation fell. Boolean indexing additionally lowers through ``nonzero`` and copies a
+        count to the host, which is where part of the synchronisations came from.
 
-        Возвращает ``(dense, atom_mask, full_mask, counts)``: плотный тензор, маску только по
-        атомам, маску вместе с токеном и позиции токенов. ``atom_mask`` важна тем, что
-        выбирает атомы в ИСХОДНОМ плоском порядке, поэтому обратный путь не восстанавливает
-        вектор принадлежности графам -- он уже есть в ``data.batch``.
+        Returns ``(dense, atom_mask, full_mask, counts)``: the dense tensor, a mask over atoms
+        only, a mask including the token, and the token positions. ``atom_mask`` matters because
+        it selects atoms in the ORIGINAL flat order, so the return path does not reconstruct the
+        graph-membership vector; it is already in ``data.batch``.
         """
         B = self._graph_count(data)
         dense, atom_mask = to_dense_batch(h_atoms, data.batch, batch_size=B)
-        counts = atom_mask.sum(dim=1)                                  # (B,) атомов в графе
-        # Один столбец под токен; его слот гарантированно нулевой (to_dense_batch заполняет
-        # нулями, и дополненный столбец тоже), поэтому index_put записывает, а не смешивает.
+        counts = atom_mask.sum(dim=1)                                  # (B,) atoms per graph
+        # One column for the token; its slot is guaranteed zero, since to_dense_batch pads with
+        # zeros and so does the added column, so index_put writes rather than mixes.
         dense = torch.nn.functional.pad(dense, (0, 0, 0, 1))
         atom_mask = torch.nn.functional.pad(atom_mask, (0, 1))
         rows = torch.arange(B, device=dense.device)
@@ -445,11 +441,11 @@ class TGNNSolv(nn.Module):
 
     @staticmethod
     def _gather_tokens(padded: torch.Tensor, counts: torch.Tensor) -> torch.Tensor:
-        """Глобальные токены из плотного тензора по их позициям.
+        """Global tokens taken out of the dense tensor at their positions.
 
-        Заменяет ``_extract_tokens``, которая строила индекс через ``torch.tensor`` из
-        питоновского списка длин -- то есть копировала B чисел с хоста на устройство каждый
-        шаг. ``counts`` уже лежит на устройстве.
+        Replaces a version that built the index with ``torch.tensor`` from a Python list of
+        lengths, copying B numbers from host to device every step. ``counts`` is already on the
+        device.
         """
         rows = torch.arange(padded.shape[0], device=padded.device)
         return padded[rows, counts]
@@ -459,8 +455,8 @@ class TGNNSolv(nn.Module):
     ) -> List[torch.Tensor]:
         """Split flat atom tensor into per-graph list.
 
-        Оставлено для ``ablation.py``, который им ещё пользуется; горячий путь
-        ``forward`` перешёл на ``_to_dense_with_token``.
+        Kept for ``ablation.py``, which still uses it; the hot path in ``forward`` uses
+        ``_to_dense_with_token``.
         """
         graphs = []
         for i in range(batch.max().item() + 1):
@@ -625,9 +621,10 @@ class TGNNSolv(nn.Module):
                 p_slv = torch.where(m.unsqueeze(-1), sp.to(p_slv), p_slv)
                 a_slv = torch.where(m, sa.to(a_slv), a_slv)
         if getattr(self.cfg, "sigma_detached_from_closure", False):
-            # Режется ПУТЬ, а не параметры: в замыкание уходят значения без истории, поэтому
-            # градиент потери по растворимости до σ-головы не доходит. sigma_shape_* ниже
-            # остаются присоединёнными, так что внешняя σ-супервизия продолжает её обучать.
+            # The PATH is cut, not the parameters: values enter the closure without history, so
+            # the gradient of the solubility loss does not reach the sigma head. The
+            # sigma_shape_* values below stay attached, so the external supervision still trains
+            # it.
             p_sol, a_sol = p_sol.detach(), a_sol.detach()
             p_slv, a_slv = p_slv.detach(), a_slv.detach()
         if getattr(self.cfg, "cosmo_sac_wire_volume", False):
@@ -1171,8 +1168,8 @@ class TGNNSolv(nn.Module):
         aux_slv = {"V_m": aux_slv_parts["V_m"]}
 
         # ---- 3. Cross-attention / Bipartite MP ----
-        # Плоское -> плотное с глобальным токеном одним вызовом вместо четырёх питоновских
-        # циклов по графам; см. _to_dense_with_token о том, сколько эти циклы стоили.
+        # Flat to dense with the global token in one call instead of four Python loops over
+        # graphs; see _to_dense_with_token for what those loops cost.
         h_sol_padded, sol_atom_mask, sol_mask, sol_counts = self._to_dense_with_token(
             h_sol_atoms, solute_data, self.sol_token
         )
@@ -1211,8 +1208,8 @@ class TGNNSolv(nn.Module):
                 )
 
         # ---- 4. Post-cross-attention readout for solute ----
-        # Маска по атомам выбирает их в ИСХОДНОМ плоском порядке, поэтому вектор
-        # принадлежности графам восстанавливать нечем и незачем: это и есть data.batch.
+        # The atom mask selects atoms in the ORIGINAL flat order, so there is nothing to
+        # reconstruct: the graph-membership vector is data.batch itself.
         sol_batch = solute_data.batch
         slv_batch = solvent_data.batch
 
@@ -1298,9 +1295,9 @@ class TGNNSolv(nn.Module):
             )
             g_slv_for_sigma = g_slv_pre
             if getattr(self.cfg, "sigma_role_invariant", False):
-                # Второй проход энкодера по растворителю С РОЛЬЮ РАСТВОРЯЕМОГО: обе стороны
-                # пары попадают в σ-голову через одну и ту же функцию молекулы, поэтому
-                # соединение получает один профиль независимо от стороны.
+                # A second encoder pass over the solvent IN THE SOLUTE ROLE: both sides of the
+                # pair reach the sigma head through the same function of the molecule, so a
+                # compound receives one profile whichever side it occupies.
                 _, g_slv_sigma_parts, _, _ = self._encode_and_readout(
                     solvent_data, "solute", temp_feat=encoder_t_feat)
                 g_slv_for_sigma = g_slv_sigma_parts["value"]

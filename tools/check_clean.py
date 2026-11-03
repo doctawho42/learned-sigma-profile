@@ -43,7 +43,8 @@ NARRATIVE = [
     r"\bwas wrong\b", r"\bgot this wrong\b", r"\bthis was broken\b",
     r"\b(caught|found) (this|it) (when|while|after|during)\b",
     r"\bdo not delete\b", r"\bdo not touch\b", r"\bdon't touch\b",
-    r"\b(claude|chatgpt|gpt-4|copilot|llm|language model|prompt|agent(ic)?)\b",
+    # "User-Agent" is an HTTP header, so the bare word needs the lookbehind.
+    r"\b(claude|chatgpt|gpt-4|copilot|llm|language model|prompt)\b|(?<!User-)\bagentic?\b",
     r"\b(todo|fixme|xxx|hack)\b[:\s]",
     r"\bfirst (version|attempt) (of this|here)\b",
     r"\bearlier (version|draft) (of this|here)\b",
@@ -61,6 +62,10 @@ PATH_EXEMPT = {"README.md", "MANIFEST.md", "environment.md"}
 
 #: The file that defines the rules necessarily contains the patterns it forbids.
 SELF = "tools/check_clean.py"
+
+#: Lines that must name the tooling, because a journal requires the disclosure. Matched as a
+#: substring, so the exemption covers the sentence and not the file.
+DISCLOSED = ("drafted with the assistance of", "a large language model, under author direction")
 
 
 def files() -> list[Path]:
@@ -87,6 +92,8 @@ def check(p: Path) -> list[str]:
             problems.append(f"{rel}:{i}: non-English prose")
         if DATED_NOTE.search(line):
             problems.append(f"{rel}:{i}: dated development note")
+        if any(d in line for d in DISCLOSED):
+            continue
         for rx in NARRATIVE_RX:
             m = rx.search(line)
             if m:

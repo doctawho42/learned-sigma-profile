@@ -65,8 +65,8 @@ def jacobian(layer, p2, A2, p1, A1, T, batch: int = 256) -> np.ndarray:
 
 
 def spectrum(J: np.ndarray, n_bins: int, tol_rel: float = 1e-8) -> dict:
-    """Спектр J^T J с вычетом направления нормировки."""
-    # Проекция вне постоянного вектора: нормировка профиля закрывает это направление
+    """Spectrum of J^T J with the normalisation direction removed."""
+    # Project out the constant vector: the profile's normalisation closes that direction
     one = np.ones((n_bins, 1)) / np.sqrt(n_bins)
     Jp = J - (J @ one) @ one.T
     s = np.linalg.svd(Jp, compute_uv=False)
@@ -91,7 +91,7 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44, 45, 46])
     ap.add_argument("--min-rows", type=int, default=40,
-                    help="минимум строк на растворитель, иначе ранг ограничен числом строк")
+                    help="minimum rows per solvent, below which the rank is limited by the row count")
     ap.add_argument("--max-solvents", type=int, default=25)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", type=Path, default=OUT)
@@ -107,8 +107,8 @@ def main() -> int:
     d = d[ok].reset_index(drop=True)
     counts = d.solvent_smiles.astype(str).value_counts()
     solvents = [s for s, n in counts.items() if n >= a.min_rows][:a.max_solvents]
-    print(f"растворителей с >= {a.min_rows} строк: {len(solvents)}; бинов {n_bins}, "
-          f"эффективная размерность {n_bins - 1}")
+    print(f"solvents with >= {a.min_rows} rows: {len(solvents)}; bins {n_bins}, "
+          f"effective dimension {n_bins - 1}")
 
     tpl = pd.read_csv(ROOT / "notebooks/data/processed/test.csv", nrows=1, low_memory=False)
     res: dict = {"n_bins": n_bins, "min_rows": a.min_rows, "solvents": solvents,
@@ -135,10 +135,10 @@ def main() -> int:
         res["seeds"].append(s)
         rk = np.array([v["numerical_rank"] for v in per.values()])
         d99 = np.array([v["dirs_for_99pct"] for v in per.values()])
-        print(f"  сид {s}: ранг {rk.min()}..{rk.max()} (медиана {int(np.median(rk))}); "
-              f"направлений на 99% информации {int(np.median(d99))}")
+        print(f"  seed {s}: rank {rk.min()}..{rk.max()} (median {int(np.median(rk))}); "
+              f"directions for 99% of the information {int(np.median(d99))}")
 
-    # --- НУЛЕВОЕ ПЛЕЧО: случайные профили той же площади --------------------------------
+    # --- THE NULL ARM: random profiles of the same area ---------------------------------
     rng = np.random.default_rng(a.seed)
     nullp = {}
     for sv in solvents:
@@ -154,8 +154,8 @@ def main() -> int:
     res["random_profile_null"] = nullp
     rkn = np.array([v["numerical_rank"] for v in nullp.values()])
     d99n = np.array([v["dirs_for_99pct"] for v in nullp.values()])
-    print(f"  НУЛЬ (случайные профили): ранг медиана {int(np.median(rkn))}; "
-          f"направлений на 99% {int(np.median(d99n))}")
+    print(f"  NULL (random profiles): median rank {int(np.median(rkn))}; "
+          f"directions for 99% {int(np.median(d99n))}")
 
     if res["seeds"]:
         d99 = np.array([v["dirs_for_99pct"] for p in res["per_seed"].values()
@@ -169,20 +169,20 @@ def main() -> int:
             "effective_dim": n_bins - 1,
             "null_dirs_for_99pct_median": int(np.median(d99n)),
         }
-        print(f"\n{'=' * 72}\nСВОДКА")
-        print(f"  из {n_bins - 1} доступных направлений профиля замыкание выставляет наружу "
-              f"{int(np.median(d99))} (размах {d99.min()}..{d99.max()}) при 99% информации")
-        print(f"  медианное число обусловленности J^T J: {np.median(cond):.2e}")
+        print(f"\n{'=' * 72}\nSUMMARY")
+        print(f"  of the {n_bins - 1} available profile directions the closure exposes "
+              f"{int(np.median(d99))} (range {d99.min()}..{d99.max()}) at 99% of the information")
+        print(f"  median condition number of J^T J: {np.median(cond):.2e}")
         same = abs(np.median(d99) - np.median(d99n)) < 2
-        verdict = ("ТО ЖЕ, значит недостаточность структурна, а не свойство чекпойнта" if same
-                   else "отличается, значит ранг зависит от того, где линеаризуем")
-        print(f"  нулевое плечо (случайные профили) даёт {int(np.median(d99n))} -- {verdict}")
+        verdict = ("THE SAME, so the deficiency is structural rather than a property of the checkpoint" if same
+                   else "different, so the rank depends on where the map is linearised")
+        print(f"  the null arm (random profiles) gives {int(np.median(d99n))}: {verdict}")
         res["summary"]["deficiency_is_structural"] = bool(same)
 
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "summary.json").write_text(json.dumps(res, ensure_ascii=False, indent=2),
                                         encoding="utf8")
-    print(f"\nзаписано: {a.out}")
+    print(f"\nwritten: {a.out}")
     return 0
 
 

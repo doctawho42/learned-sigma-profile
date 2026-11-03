@@ -48,7 +48,7 @@ OUT = ROOT / "results/t2_softmax_floor"
 
 
 def stats(shape: np.ndarray, zero_mask: np.ndarray) -> dict:
-    """shape: (n_mol, n_bins), нормирован на 1. zero_mask: где эталон РОВНО нуль."""
+    """shape: (n_mol, n_bins), normalised to one. zero_mask: where the reference is EXACTLY zero."""
     ped = np.array([shape[i, zero_mask[i]].sum() for i in range(len(shape))])
     in_zero = np.concatenate([shape[i, zero_mask[i]] for i in range(len(shape))])
     in_nz = np.concatenate([shape[i, ~zero_mask[i]] for i in range(len(shape))])
@@ -73,7 +73,7 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44, 45, 46])
     ap.add_argument("--ckpt-dir", type=Path, default=CKPT_DIR,
-                    help="каталог с grounded_a_seed*.pt; по умолчанию референсное плечо")
+                    help="directory holding grounded_a_seed*.pt; defaults to the reference arm")
     ap.add_argument("--out", type=Path, default=OUT)
     a = ap.parse_args()
 
@@ -85,23 +85,24 @@ def main() -> int:
     ref = np.stack([np.asarray(table[canonicalize(m)][0], float) for m in mols])
     ref = ref / np.maximum(ref.sum(1, keepdims=True), 1e-30)
     zero = ref == 0.0
-    print(f"молекул с эталонным профилем: {len(mols)}; бинов {n_bins}")
-    print(f"эталонно-нулевых бинов: {100 * zero.mean():.1f}% всех клеток "
-          f"(по молекуле медиана {int(np.median(zero.sum(1)))} из {n_bins})")
+    print(f"molecules with a reference profile: {len(mols)}; bins {n_bins}")
+    print(f"reference-zero bins: {100 * zero.mean():.1f}% of all cells "
+          f"(median {int(np.median(zero.sum(1)))} of {n_bins} per molecule)")
 
     tpl = pd.read_csv(ROOT / "notebooks/data/processed/test.csv", nrows=1, low_memory=False)
     res: dict = {"n_molecules": len(mols), "n_bins": n_bins,
                  "share_reference_zero_cells": float(zero.mean()),
                  "median_zero_bins_per_molecule": int(np.median(zero.sum(1))),
                  "per_seed": {}}
-    # Массивы масс выгружаются рядом со сводкой: рисунок должен рисоваться ИЗ ДЕПОЗИТА, а не
-    # пересчитывать пять чекпойнтов у себя внутри, иначе он и сводка расходятся молча.
+    # The mass arrays are written beside the summary so that the figure is drawn FROM THE
+    # DEPOSIT rather than recomputing five checkpoints of its own, which would let the figure and
+    # the summary diverge silently.
     dists: dict[str, np.ndarray] = {}
 
     for s in a.seeds:
         ck = a.ckpt_dir / f"grounded_a_seed{s}.pt"
         if not ck.exists():
-            print(f"сид {s}: чекпойнта нет, пропуск")
+            print(f"seed {s}: no checkpoint, skipping")
             continue
         model, _, cfg = build_model(ck)
         for role, prof in zip(("solute", "solvent"), learned_profiles(model, cfg, mols, tpl)):
@@ -115,12 +116,12 @@ def main() -> int:
                 [p[i, ~zero[i]] for i in range(len(p))]).astype(np.float32)
             dists[f"pedestal_seed{s}_{role}"] = np.array(
                 [p[i, zero[i]].sum() for i in range(len(p))], np.float32)
-            print(f"  сид {s} {role:8s}: пьедестал медиана {st['pedestal_median']:.4f}  "
-                  f"мин.масса бина {st['min_bin_mass_anywhere']:.2e}  "
-                  f"медиана в нулевых бинах {st['median_bin_mass_in_zero_bins']:.2e}  "
-                  f"порядков между ними {st['orders_between_min_and_zero_bin_median']:.1f}")
+            print(f"  seed {s} {role:8s}: pedestal median {st['pedestal_median']:.4f}  "
+                  f"min bin mass {st['min_bin_mass_anywhere']:.2e}  "
+                  f"median in zero bins {st['median_bin_mass_in_zero_bins']:.2e}  "
+                  f"orders between them {st['orders_between_min_and_zero_bin_median']:.1f}")
 
-    # --- НУЛЕВОЕ ПЛЕЧО: необученная голова той же архитектуры -----------------------------
+    # --- THE NULL ARM: an untrained head of the same architecture ------------------------
     from tgnn_solv.config import TGNNSolvConfig
     from tgnn_solv.heads import SigmaProfileHead
     torch.manual_seed(0)
@@ -136,12 +137,12 @@ def main() -> int:
     dists["pedestal_untrained"] = np.array(
         [p0[i, zero[i]].sum() for i in range(len(p0))], np.float32)
     n0 = res["untrained_null"]
-    print(f"\n  НУЛЬ, необученная голова: пьедестал медиана {n0['pedestal_median']:.4f}  "
-          f"мин.масса {n0['min_bin_mass_anywhere']:.2e}")
+    print(f"\n  NULL, untrained head: pedestal median {n0['pedestal_median']:.4f}  "
+          f"min mass {n0['min_bin_mass_anywhere']:.2e}")
 
     ks = list(res["per_seed"])
     if ks:
-        print(f"\n{'=' * 78}\nВОРОТА: связывает ли софтмакс")
+        print(f"\n{'=' * 78}\nGATE: is the softmax binding")
         for role in ("solute", "solvent"):
             ped = np.array([res["per_seed"][k][role]["pedestal_median"] for k in ks])
             mn = np.array([res["per_seed"][k][role]["min_bin_mass_anywhere"] for k in ks])
@@ -152,27 +153,27 @@ def main() -> int:
             below = np.array([res["per_seed"][k][role]["share_of_zero_bins_below_1e_5"]
                               for k in ks])
             print(f"\n  {role}")
-            print(f"   пьедестал (доля массы в эталонно-нулевых бинах): медиана по сидам "
-                  f"{np.median(ped):.4f}, разброс {ped.min():.4f}...{ped.max():.4f}")
-            print(f"   против необученной головы {n0['pedestal_median']:.4f}  "
-                  f"{'ok, обучение двигает' if ped.max() < 0.8 * n0['pedestal_median'] else 'НЕ ОТЛИЧАЕТСЯ от инициализации'}")
-            print(f"   эта же голова доходит до {mn.min():.2e} где-то на корпусе, "
-                  f"а в нулевых бинах кладёт {np.median(med0):.2e}")
-            print(f"   разница: {np.median(orders):.1f} порядков (посидово "
+            print(f"   pedestal (share of mass in reference-zero bins): median over seeds "
+                  f"{np.median(ped):.4f}, spread {ped.min():.4f}...{ped.max():.4f}")
+            print(f"   against the untrained head {n0['pedestal_median']:.4f}  "
+                  f"{'ok, training moves it' if ped.max() < 0.8 * n0['pedestal_median'] else 'NO DIFFERENT from initialisation'}")
+            print(f"   the same head reaches {mn.min():.2e} somewhere on the corpus "
+                  f"while placing {np.median(med0):.2e} in the zero bins")
+            print(f"   difference: {np.median(orders):.1f} orders (per seed "
                   f"{orders.min():.1f}...{orders.max():.1f})")
-            print(f"   доля эталонно-нулевых клеток, где голова УЖЕ ниже 1e-5: "
+            print(f"   share of reference-zero cells where the head is ALREADY below 1e-5: "
                   f"{100 * np.median(below):.2f}%")
-            verdict = ("СОФТМАКС НЕ СВЯЗЫВАЕТ -- пьедестал есть выбор головы, "
-                       "нуль-способность снимает ограничение, которого нет"
+            verdict = ("THE SOFTMAX IS NOT BINDING: the pedestal is the head's own choice, and a "
+                       "zero-capable output would lift a constraint that does not exist"
                        if np.median(orders) > 2.0 else
-                       "софтмакс связывает -- голова упирается в пол, T2 имеет смысл")
-            print(f"   ВЕРДИКТ: {verdict}")
+                       "the softmax is binding: the head is against a floor, and a zero-capable output is worth trying")
+            print(f"   VERDICT: {verdict}")
 
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "summary.json").write_text(json.dumps(res, ensure_ascii=False, indent=2),
                                         encoding="utf8")
     np.savez_compressed(a.out / "bin_mass_distributions.npz", **dists)
-    print(f"\nзаписано: {a.out} (+ bin_mass_distributions.npz, {len(dists)} массивов)")
+    print(f"\nwritten: {a.out} (+ bin_mass_distributions.npz, {len(dists)} arrays)")
     return 0
 
 

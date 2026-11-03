@@ -67,7 +67,7 @@ def _stimulus(n_rows: int = 7, n_bins: int = 51, seed: int = 0):
     pa = torch.rand(n_rows, generator=g) * 50 + 50
     ta = torch.rand(n_rows, generator=g) * 50 + 50
     mask = torch.ones(n_rows, dtype=torch.bool)
-    mask[0] = False                      # хотя бы одна строка вне маски
+    mask[0] = False                      # at least one row outside the mask
     return ps, ts, pa, ta, mask
 
 
@@ -78,14 +78,14 @@ def test_unit_weights_are_bitwise_identical_to_no_weights(mode):
     ones = sigma_profile_emd_loss(ps, ts, pa, ta, mask, mode=mode,
                                   shape_bin_weights=torch.ones(ps.shape[-1]))
     assert base.item() == ones.item(), (
-        f"mode={mode}: вес из единиц сдвинул член с {base.item()!r} на {ones.item()!r}; "
-        "умножение на 1.0 в IEEE754 точное, значит изменился порядок операций"
+        f"mode={mode}: a weight of ones moved the term from {base.item()!r} to {ones.item()!r}; "
+        "multiplication by 1.0 is exact in IEEE754, so the order of operations changed"
     )
 
 
 @pytest.mark.parametrize("mode", ["emd", "mse"])
 def test_none_weights_reproduce_the_pre_hook_expression(mode):
-    """Невзвешенная ветвь обязана совпасть с выражением, написанным до появления крюка."""
+    """The unweighted branch must agree with the expression written before the hook existed."""
     ps, ts, pa, ta, mask = _stimulus()
     m = mask.bool()
     if mode == "mse":
@@ -108,12 +108,12 @@ def test_wrong_shaped_weights_raise_instead_of_broadcasting(bad):
 
 
 def test_weighted_emd_is_wasserstein_on_the_stretched_grid():
-    """Независимая реализация оптимального переноса, а не пересказ той же формулы.
+    """An independent optimal-transport implementation, not a restatement of the same formula.
 
-    Если расстояние между соседними узлами сетки равно w_k, то узлы стоят в x_0 = 0,
-    x_{k+1} = x_k + w_k, и 1-D Вассерштейн между двумя дискретными мерами на этих узлах обязан
-    совпасть с sum_k w_k |cumsum(p)_k - cumsum(q)_k|. Это и есть обоснование формы взвешенного
-    члена, поэтому оно проверяется сторонним кодом.
+    If adjacent grid points sit at distance w_k, the points are at x_0 = 0 and
+    x_{k+1} = x_k + w_k, and the one-dimensional Wasserstein distance between two discrete
+    measures on those points must equal sum_k w_k |cumsum(p)_k - cumsum(q)_k|. That identity is
+    the justification for the shape of the weighted term, so it is checked by separate code.
     """
     wd = pytest.importorskip("scipy.stats").wasserstein_distance
     rng = np.random.default_rng(7)
@@ -135,13 +135,13 @@ def test_weighted_emd_is_wasserstein_on_the_stretched_grid():
 
 
 def test_weight_reorders_two_discrepancies_that_tie_unweighted():
-    """Два расхождения с РАВНЫМ невзвешенным членом взвешенный обязан разделить по цене.
+    """Two departures with an EQUAL unweighted term must be separated by cost when weighted.
 
-    Иначе крюк не делает того, ради чего существует, и арм T1 читался бы как контроль.
+    Otherwise the hook does not do what it exists for, and the treated arm reads as a control.
     """
     n = 51
     p = np.full(n, 1.0 / n)
-    cheap, costly = 24, 41              # середина ядра и переход в водородносвязанный угол
+    cheap, costly = 24, 41              # mid-core, and the transition into the hydrogen-bonded corner
     eps = 0.01
     qa, qb = p.copy(), p.copy()
     qa[cheap] += eps
@@ -159,13 +159,13 @@ def test_weight_reorders_two_discrepancies_that_tie_unweighted():
         ).item()
 
     assert loss(qa) == pytest.approx(loss(qb), rel=1e-12), (
-        "стимулы подобраны так, чтобы невзвешенный член их НЕ различал; если различает, "
-        "тест потерял смысл"
+        "the stimuli are built so the unweighted term does NOT separate them; if it does, the "
+        "test has lost its meaning"
     )
     w = np.load(VECTOR)
     assert loss(qb, w) > loss(qa, w), (
-        f"взвешенный член не развёл равные расхождения: дешёвое {loss(qa, w):.6f}, "
-        f"дорогое {loss(qb, w):.6f}"
+        f"the weighted term did not separate equal departures: cheap {loss(qa, w):.6f}, "
+        f"expensive {loss(qb, w):.6f}"
     )
 
 
@@ -173,21 +173,21 @@ def test_deposited_vector_is_a_usable_metric():
     w = np.load(VECTOR)
     assert w.shape == (51,)
     assert np.all(np.isfinite(w)) and float(w.min()) > 0.0, (
-        "вес обязан быть конечным и строго положительным, иначе член перестаёт быть метрикой"
+        "the weight must be finite and strictly positive, or the term stops being a metric"
     )
     assert float(w.mean()) == pytest.approx(1.0, abs=1e-9), (
-        "нормировка на mean(w) = 1 -- это контролируемая переменная арма: суммарная величина "
-        "супервизии держится фиксированной, меняется только её распределение по сетке"
+        "normalising to mean(w) = 1 is the arm's controlled variable: the total amount of "
+        "supervision is held fixed and only its distribution over the grid changes"
     )
     dep = json.loads(DEPOSIT.read_text(encoding="utf8"))
     assert w == pytest.approx(np.asarray(dep["by_rows"]["train"]["w_seed_mean"], float)), (
-        "weights_t1.npy обязан быть вектором с TRAIN-строк: вывод веса на поверхности, на "
-        "которой арм будут читать, сделал бы чтение круговым"
+        "weights_t1.npy must be the vector derived on the TRAINING rows: deriving the weight on "
+        "the surface the arm will be read on would make the reading circular"
     )
 
 
 def test_deposited_weight_peaks_at_the_transition_not_deep_in_the_corner():
-    """Контринтуитивное чтение, которое будет переврано, если не привязать."""
+    """A counter-intuitive reading, which will be misquoted unless it is pinned."""
     dep = json.loads(DEPOSIT.read_text(encoding="utf8"))
     g = np.asarray(dep["sigma_grid"], float)
     b = dep["by_rows"]["train"]
@@ -195,19 +195,20 @@ def test_deposited_weight_peaks_at_the_transition_not_deep_in_the_corner():
     R = np.asarray(b["R_seed_mean"], float)
     k = int(w.argmax())
     assert g[k] == pytest.approx(0.016, abs=1e-9), (
-        f"максимум веса ожидается на внутренней кромке угла (sigma = +0.016), получено "
+        f"the weight is expected to peak at the inner edge of the corner (sigma = +0.016), got "
         f"sigma = {g[k]:+.4f}"
     )
     deep = g >= 0.021
     assert w[deep].mean() < 0.5 * w[k], (
-        f"вес глубоко в углу {w[deep].mean():.3f} должен быть много меньше пикового {w[k]:.3f}: "
-        "потенциал там насыщается, дорого ВОЙТИ в водородносвязанную область, а не уйти глубже"
+        f"the weight deep in the corner {w[deep].mean():.3f} must be far below the peak {w[k]:.3f}: "
+        "the potential saturates there, so it is expensive to ENTER the hydrogen-bonded region "
+        "rather than to go deeper into it"
     )
-    assert R[deep].mean() > R[k], "сам потенциал при этом в углу выше -- это не противоречие"
+    assert R[deep].mean() > R[k], "the potential itself is higher in the corner, which is not a contradiction"
 
 
 def test_sign_asymmetry_of_the_weight_flips_between_row_sets_at_every_seed():
-    """Расхождение поверхностей, а не шум: диапазоны по сидам не пересекаются."""
+    """A difference of surfaces rather than noise: the per-seed ranges do not overlap."""
     dep = json.loads(DEPOSIT.read_text(encoding="utf8"))
     g = np.asarray(dep["sigma_grid"], float)
     neg, pos = g < 0, g > 0
@@ -219,12 +220,12 @@ def test_sign_asymmetry_of_the_weight_flips_between_row_sets_at_every_seed():
                                / np.asarray(v["w"], float)[neg].mean())
                          for v in per_seed.values()]
     assert min(ratios["train"]) > max(ratios["idac"]), (
-        f"диапазоны обязаны быть непересекающимися: train {min(ratios['train']):.2f}.."
+        f"the ranges must not overlap: train {min(ratios['train']):.2f}.."
         f"{max(ratios['train']):.2f}, idac {min(ratios['idac']):.2f}..{max(ratios['idac']):.2f}"
     )
     assert min(ratios["train"]) > 1.0 > max(ratios["idac"]), (
-        "и лежать по разные стороны единицы: иначе это разная величина, а не разный ЗНАК "
-        "асимметрии"
+        "and must fall on opposite sides of one, or this is a difference in magnitude rather than "
+        "in the SIGN of the asymmetry"
     )
 
 
@@ -234,26 +235,26 @@ def test_weight_rank_is_seed_stable_even_though_its_contrast_is_not():
         b = dep["by_rows"][which]
         pairs = b["spearman_between_seeds"]
         assert len(pairs) == 10 and min(pairs) > 0.5, (
-            f"{which}: ранговое согласие между сидами {min(pairs):+.3f} -- вектор сидозависим, "
-            "брать его среднее по сидам нельзя"
+            f"{which}: rank agreement between seeds is {min(pairs):+.3f}; the vector is seed-dependent "
+            "and its mean over seeds cannot be taken"
         )
         cs = np.asarray(b["corner_over_core_per_seed"], float)
         assert cs.max() / cs.min() > 1.4, (
-            f"{which}: контраст потенциала по сидам стабилен ({cs.max() / cs.min():.2f}x) -- "
-            "тогда его тоже можно было бы привязать, и этот тест надо переписать"
+            f"{which}: the potential contrast is stable across seeds ({cs.max() / cs.min():.2f}x), so "
+            "it could be pinned as well and this test should be rewritten"
         )
 
 
 def test_weight_vector_is_not_the_grid_geometry():
-    """Нулевое плечо: та же карта на случайных профилях той же площади."""
+    """The null arm: the same map computed on random profiles of the same area."""
     dep = json.loads(DEPOSIT.read_text(encoding="utf8"))
     for which in ("train", "idac"):
         b = dep["by_rows"][which]
         null_cc = float(b["null"]["corner_over_core"])
         real = np.asarray(b["corner_over_core_per_seed"], float)
         assert real.min() > 5.0 * null_cc, (
-            f"{which}: худший сид {real.min():.1f}x против нуля {null_cc:.2f}x -- карта про "
-            "геометрию сетки, а не про химию корпуса"
+            f"{which}: the worst seed gives {real.min():.1f}x against a null of {null_cc:.2f}x, so the "
+            "map is about the geometry of the grid rather than the chemistry of the corpus"
         )
         assert abs(float(b["spearman_weights_vs_null"])) < 0.5
 
@@ -273,42 +274,45 @@ def test_gate2_expensive_third_does_not_beat_a_random_third():
     assert len(ps) == 5 and g["n_null"] >= 20
     for s, r in ps.items():
         assert abs(r["base_aad"] - r["deposited_aad"]) < 5e-3, (
-            f"сид {s}: невозмущённое плечо не воспроизводит депонированный AAD, читать "
-            "подстановки нельзя"
+            f"seed {s}: the unperturbed arm does not reproduce the deposited AAD, so the "
+            "substitutions cannot be read"
         )
     exp = np.array([r["recovered_expensive"] for r in ps.values()])
     null = np.array([np.mean(r["null_recovered"]) for r in ps.values()])
     assert exp.mean() < null.mean(), (
-        f"дорогая треть возвращает {100 * exp.mean():.1f}% разрыва против {100 * null.mean():.1f}% "
-        "у случайной трети -- если это перевернулось, премиса T1 изменилась и её надо перечитать"
+        f"the expensive third recovers {100 * exp.mean():.1f}% of the gap against "
+        f"{100 * null.mean():.1f}% for a random third; if this has reversed, the premise has "
+        "changed and must be re-examined"
     )
     assert exp.min() < 0.0 < exp.max(), (
-        f"знак эффекта дорогой трети обязан меняться по сидам ({100 * exp.min():+.1f}.."
-        f"{100 * exp.max():+.1f}%): именно это делает атрибуцию неустановленной, а не опровергнутой"
+        f"the sign of the expensive third's effect must change across seeds "
+        f"({100 * exp.min():+.1f}..{100 * exp.max():+.1f}%): that is what makes the attribution "
+        "unestablished rather than refuted"
     )
     assert min(r["p_expensive_vs_null"] for r in ps.values()) >= 0.1
 
 
 def test_gate2_measures_non_additivity_whole_shape_helps_a_third_often_hurts():
-    """Побочный результат, который крупнее самих ворот, и потому обязан быть привязан."""
+    """A by-product larger than the gate itself, and therefore pinned."""
     g = json.loads(GATE2.read_text(encoding="utf8"))
     ps = g["per_seed"]
     base = np.array([r["base_aad"] for r in ps.values()])
     full = np.array([r["full_shape_substituted_aad"] for r in ps.values()])
     assert np.all(base > full), (
-        "подстановка ВСЕЙ формы обязана помогать на всех пяти сидах: именно на контрасте с этим "
-        "читается, что подстановка трети часто вредит"
+        "substituting the WHOLE shape must help on all five seeds: it is against that contrast "
+        "that substituting a third is read as often harmful"
     )
     worse = np.array([np.mean(np.asarray(r["null_aad"]) > r["base_aad"]) for r in ps.values()])
     assert 0.05 <= worse.mean() <= 0.45 and worse.max() >= 0.2, (
-        f"доля розыгрышей случайной трети, которые ХУЖЕ полностью выученного профиля: "
-        f"{worse.round(2)} -- это и есть измерение неаддитивности отображения профиль -> ln gamma"
+        f"share of random-third draws that are WORSE than the fully learned profile: "
+        f"{worse.round(2)}; this is the measurement of non-additivity in the map from profile "
+        "to ln gamma"
     )
-    # глобальное разложение разрыва: форма против площади. Поставлено корректно, в отличие от
-    # по-бинового, потому что обе части подставляются целиком.
+    # A global split of the gap into shape and area. This one is well posed, unlike a per-bin
+    # split, because both parts are substituted whole.
     shape_part = float((base - full).mean())
     gap = float(base.mean() - 0.7649746944274517)
     assert 0.6 < shape_part / gap < 0.75, (
-        f"форма отвечает за {100 * shape_part / gap:.0f}% разрыва до эталонного профиля; "
-        "площадь -- за остальное"
+        f"shape accounts for {100 * shape_part / gap:.0f}% of the gap to the reference profile; "
+        "area accounts for the rest"
     )

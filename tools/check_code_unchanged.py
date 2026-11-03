@@ -12,6 +12,10 @@ every string literal is replaced with one placeholder and docstrings are discard
 files that agree under this comparison have the same identifiers, control flow, numeric
 constants, call signatures and argument order.
 
+The literal segments of an f-string are collapsed the same way, so re-wording a message
+around its interpolations is a text change while the interpolated expressions, their order
+and their format specs are not.
+
 WHAT IT DOES NOT COVER, and this matters. String literals are out of scope by
 construction, and a dictionary key is a string literal. Renaming a key therefore passes
 this check silently. Three keys were renamed when this repository was prepared, from
@@ -41,6 +45,11 @@ NEW_HERE = {"tools/check_clean.py", "tools/check_code_unchanged.py",
 #: Files whose executable structure is deliberately different here, each with the reason.
 #: An entry that no longer differs is reported as stale, so this list cannot rot.
 CHANGED_HERE = {
+    "scripts/analysis/make_donor_window_figure.py":
+        "a hook that applied a style sheet from a path in one user's home directory was "
+        "removed, together with the constant naming that path; nothing in this repository "
+        "supplies the file, and the journal style the figure needs is applied by "
+        "scripts/analysis/acs_figure_style.py in the same place",
     "tests/test_sigma_bin_weights_hook.py":
         "the retired gate-1 test and its path constant were removed; the test read "
         "results/per_bin_sensitivity_weights/weight_points_at_error.json, a deposit "
@@ -63,6 +72,18 @@ class Normalise(ast.NodeTransformer):
         if (body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant)
                 and isinstance(body[0].value.value, str)):
             node.body = body[1:] or [ast.Pass()]
+        return node
+
+    def visit_JoinedStr(self, node: ast.JoinedStr) -> ast.JoinedStr:
+        """Drop the literal segments of an f-string, keeping the interpolations.
+
+        Where the literal text of an f-string sits, how it is split across adjacent
+        implicitly concatenated pieces, and whether a message ends in a word or in a value
+        are all text. What is not text is which expressions are interpolated, in what order,
+        and with what format specification, and those survive this transform untouched.
+        """
+        self.generic_visit(node)
+        node.values = [v for v in node.values if not isinstance(v, ast.Constant)]
         return node
 
     visit_Module = _strip_doc

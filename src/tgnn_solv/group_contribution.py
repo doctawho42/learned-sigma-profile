@@ -32,7 +32,7 @@ class JobackGroup:
 
     # There is deliberately no per-group dCp increment. dH_fus/T_m is a ratio of two molecular
     # quantities and does not decompose over fragments; a property that returned one invited the
-    # sum that _estimate_dcp_from_counts used to perform, and that sum was wrong by a median factor
+    # sum over group counts, which is not the quantity wanted here and departs from it by a median factor
     # of 2.95. Aggregate the increments first, divide once.
 
 
@@ -162,7 +162,7 @@ def _estimate_dcp_from_counts(counts: dict[int, int]) -> float | None:
     occurrence, and each group's enthalpy increment belongs over the molecule's T_m rather than over
     its own. Summing the per-group ratios added the 122.5 K base once per occurrence and divided
     each numerator by its own increment, inflating the result by a median factor of 2.95 (max 11.6)
-    over 166 solutes. Found 2026-08-06 while auditing a crystal fidelity ladder whose third rung the
+    over 166 solutes. It surfaced in an audit of a crystal fidelity ladder whose third rung the
     inflation alone produced: repairing this line moved that rung's MSE from 12.56 to 5.49, erasing
     92% of the effect it was built to show. No published number rests on it -- `use_gc_priors_crystal`
     is False by default and none of the manuscript's arms enable it.

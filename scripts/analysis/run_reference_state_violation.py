@@ -55,7 +55,7 @@ def hellinger(p: np.ndarray, q: np.ndarray) -> float:
 
 
 def ln_gamma_self(layer, p2: np.ndarray, p1: np.ndarray, n_iter: int) -> float:
-    """ln gamma_inf(i в i) при профиле p2 в слоте растворяемого и p1 в слоте растворителя."""
+    """ln gamma_inf(i in i) with profile p2 in the solute slot and p1 in the solvent slot."""
     layer.n_iter_eval = n_iter
     t2 = torch.tensor(p2, dtype=torch.float).unsqueeze(0)
     t1 = torch.tensor(p1, dtype=torch.float).unsqueeze(0)
@@ -77,22 +77,22 @@ def main() -> int:
 
     cks = sorted(a.ckpt_dir.glob(a.arm_glob))
     if not cks:
-        print(f"нет чекпойнтов в {a.ckpt_dir}/{a.arm_glob}")
+        print(f"no checkpoints in {a.ckpt_dir}/{a.arm_glob}")
         return 1
 
-    # ВОРОТА 3: набор по has_solubility, не по ln_x2.notna()
+    # GATE 3: select the set by has_solubility, not by ln_x2.notna()
     test = pd.read_csv(TEST, low_memory=False)
     if "has_solubility" not in test.columns:
-        print("нет колонки has_solubility -- отказываюсь угадывать набор")
+        print("no has_solubility column; refusing to guess the set")
         return 2
     scored = test[test["has_solubility"].astype(bool)]
-    assert not (scored["ln_x2"] == 0.0).all(), "отобраны строки-заполнители"
+    assert not (scored["ln_x2"] == 0.0).all(), "placeholder rows were selected"
     table = load_sigma_profiles(str(PROFILES), n_bins=51)
     seen = set(scored["solute_smiles"].astype(str)) | set(scored["solvent_smiles"].astype(str))
     mols = sorted({c for s in seen if (c := canonicalize(str(s))) is not None and c in table})
     if a.limit:
         mols = mols[: a.limit]
-    print(f"ВОРОТА 3: молекул в наборе {len(mols)} (предзаявка: 71)")
+    print(f"GATE 3: molecules in the set {len(mols)} (pre-declared: 71)")
     gate3 = len(mols) == 71 or bool(a.limit)
 
     res: dict = {"n_molecules": len(mols), "counts": list(COUNTS), "T_K": T_K,
@@ -105,7 +105,7 @@ def main() -> int:
         seed = int(ckd.get("seed", -1))
         layer = model.sle_solver.cosmo_sac_layer
         if layer is None:
-            print(f"{ck.name}: плечо не на COSMO-SAC -- пропускаю")
+            print(f"{ck.name}: this arm does not use COSMO-SAC, skipping")
             continue
         p_sol, p_slv = learned_profiles(model, cfg, mols, tmpl)
         rows = []
@@ -116,7 +116,7 @@ def main() -> int:
                    "area_solvent": float(p_slv[i].sum())}
             for n in COUNTS:
                 rec[f"ln_gamma_self_n{n}"] = ln_gamma_self(layer, p_sol[i], p_slv[i], n)
-                # ВОРОТА 1: один профиль в оба слота обязан дать ноль
+                # GATE 1: one profile in both slots must return zero
                 rec[f"ctrl_solute_n{n}"] = ln_gamma_self(layer, p_sol[i], p_sol[i], n)
                 rec[f"ctrl_solvent_n{n}"] = ln_gamma_self(layer, p_slv[i], p_slv[i], n)
             rows.append(rec)
@@ -132,20 +132,20 @@ def main() -> int:
             **{f"max_abs_n{n}": float(d[f"ln_gamma_self_n{n}"].abs().max()) for n in COUNTS},
             **{f"median_signed_n{n}": float(d[f"ln_gamma_self_n{n}"].median()) for n in COUNTS},
         }
-        print(f"  сид {seed}: ролевой разрыв {d.hellinger_role_gap.median():.4f}  "
-              f"контроль max|.| {worst_ctrl:.2e}  "
-              + "  ".join(f"n={n} медиана|lnγ| {d[f'ln_gamma_self_n{n}'].abs().median():.4f}"
+        print(f"  seed {seed}: role gap {d.hellinger_role_gap.median():.4f}  "
+              f"control max|.| {worst_ctrl:.2e}  "
+              + "  ".join(f"n={n} median|ln gamma| {d[f'ln_gamma_self_n{n}'].abs().median():.4f}"
                           for n in COUNTS))
         a.out.mkdir(parents=True, exist_ok=True)
         d.to_csv(a.out / f"per_molecule_seed{seed}.csv", index=False)
 
-    print(f"\nВОРОТА 1: одно-профильный контроль, худшее |.| по всем сидам = {gate1_worst:.3e}")
+    print(f"\nGATE 1: the one-profile control, worst |.| over all seeds = {gate1_worst:.3e}")
     res["gate1_control_is_zero"] = bool(gate1_worst < 1e-5)
     if not res["gate1_control_is_zero"]:
-        print("  ПРОВАЛЕНЫ -- сломана оснастка, а не термодинамика. ЧТЕНИЕ ОТМЕНЕНО.")
+        print("  FAILED: the harness is broken, not the thermodynamics. THE READING IS CANCELLED.")
     (a.out / "summary.json").write_text(json.dumps(res, ensure_ascii=False, indent=2),
                                         encoding="utf8")
-    print(f"записано: {a.out}")
+    print(f"written: {a.out}")
     return 0
 
 

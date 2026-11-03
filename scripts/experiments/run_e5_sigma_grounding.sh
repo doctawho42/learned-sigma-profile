@@ -28,8 +28,8 @@
 #   CKPT_DIR         checkpoints/e5
 #   SEEDS            "42 43 44"      space-separated list of random seeds
 #   ARMS             all six         space-separated arm subset (smoke: ARMS="ungrounded")
-#                                    E2 (кристалл закреплён снаружи): ARMS="grounded_a grounded_a_detachcrystal"
-#                                    G4 (пол на глубине sigma): ARMS="grounded_a grounded_a_shapefloor"
+#                                    crystal branch pinned externally: ARMS="grounded_a grounded_a_detachcrystal"
+#                                    floor on the sigma descent:   ARMS="grounded_a grounded_a_shapefloor"
 #   DIRECT_EPOCHS    "" (config 110) directgnn --epochs override; smoke: DIRECT_EPOCHS=1
 #                                    (EXTRA_TRAIN_ARGS is TGNN phase-epochs — directgnn ignores it)
 #   NUM_WORKERS      "" (0)          DataLoader workers for every training arm (e.g. 8 on a many-core box)
@@ -43,12 +43,12 @@ cd "$(dirname "$0")/../.."
 export KMP_DUPLICATE_LIB_OK=TRUE   # rdkit/torch/sklearn libomp clash on macOS
 
 PY="${PY:-$HOME/anaconda3/envs/tgnn-solv/bin/python}"
-# Путь к интерпретатору вшит по умолчанию и на другой машине промахивается. При промахе шелл печатал
-# "No such file or directory" и шёл дальше, а наружу уходил код 0 -- то есть десятичасовой арм мог
-# "закончиться" мгновенно и успешно. Проверяем ОДИН раз, здесь, и падаем громко.
+# The interpreter path has a default that misses on another machine. A miss would otherwise print
+# "No such file or directory", continue, and exit 0, so a ten-hour arm could finish instantly and
+# report success. It is checked ONCE, here, and fails loudly.
 if ! "${PY}" -c 'import sys' >/dev/null 2>&1; then
-  echo "ОСТАНОВ: интерпретатор '${PY}' не исполняется." >&2
-  echo "  Задайте PY=<путь к python> -- например PY=/mnt/storage/\$USER/tgnn-solv/env/bin/python" >&2
+  echo "STOP: the interpreter '${PY}' is not executable." >&2
+  echo "  Set PY=<path to python>, for example PY=\$HOME/tgnn-solv/env/bin/python" >&2
   exit 2
 fi
 # DEVICE is a demand, not a default. Unset, --device is not passed at all and each child
@@ -74,7 +74,7 @@ NUM_WORKERS="${NUM_WORKERS:-}"             # DataLoader workers for all training
 NW_ARGS=(); [ -n "${NUM_WORKERS}" ] && NW_ARGS=(--num-workers "${NUM_WORKERS}")
 
 # DataLoader workers pass tensors between processes as file descriptors, and several concurrent
-# arms exhaust the default soft limit of 1024 during validation: one arm of the 2026-08-08 gate
+# arms exhaust the default soft limit of 1024 during validation: one arm of a gate
 # died with "RuntimeError: received 0 items of ancdata", which reads like a data bug and is not
 # one. Raise the soft limit toward the hard one whenever workers are in play.
 if [ -n "${NUM_WORKERS}" ] && [ "${NUM_WORKERS}" != "0" ]; then
@@ -195,30 +195,33 @@ for SEED in ${SEEDS}; do
           --checkpoint "${ckpt}" --data "${TEST}" --output "${pred}" \
           --model-type tgnn ${DEV_ARGS[@]+"${DEV_ARGS[@]}"} ;;
       grounded_a_shapefloor)
-        # G4: sigma-супервизия спускается до ЗАДАННОЙ ГЛУБИНЫ и останавливается.
-        # shape_loss := relu(shape_loss - 0.40); выше пола градиент прежний, на полу и ниже --
-        # ровно нуль. Контроль -- плечо grounded_a, то есть та же конфигурация без одного флага.
+        # The sigma supervision descends to a GIVEN DEPTH and stops.
+        # shape_loss := relu(shape_loss - 0.40): above the floor the gradient is unchanged, at the
+        # floor and below it is exactly zero. The control is the grounded_a arm, which is the same
+        # configuration without this one flag.
         #
-        # ОТКУДА 0.40. results/g4_descent_depth, пять сидов: спуск к депонированному профилю
-        # улучшает AAD на IDAC с 1.3142 до 0.8201, но внутренний оптимум по глубине есть у всех
-        # пяти сидов (ни одного на краю сетки), и дальше оценка портится. Выигрыш от глубины
-        # +0.5490 +- 0.1129, положителен 5/5 -- это 3.6 сид-sd. Оптимум при EMD 0.3986 +- 0.0442;
-        # перенос через долю снятого даёт 0.4457, внутри собственного разброса порога.
-        # Единицы сверены: в обучающем потоке мишень нормирована на сумму 1 (все строки ровно
-        # 1.0), предсказание есть softmax, и G4 мерил ровно эту величину.
+        # WHERE 0.40 COMES FROM. In results/g4_descent_depth, over five seeds, descending toward
+        # the deposited profile improves the IDAC AAD from 1.3142 to 0.8201, but every one of the
+        # five seeds has an interior optimum in depth, none at the edge of the grid, and beyond it
+        # the score degrades. The gain from depth is +0.5490 +- 0.1129 and positive on 5 of 5,
+        # which is 3.6 seed standard deviations. The optimum sits at EMD 0.3986 +- 0.0442;
+        # carrying it across by the share removed gives 0.4457, inside the threshold's own spread.
+        # The units were checked: in the training stream the target is normalised to sum to one,
+        # every row exactly 1.0, the prediction is a softmax, and the sweep measured that same
+        # quantity.
         #
-        # НАПРАВЛЕНИЕ ПРОВЕРЕНО НУЛЯМИ ПО МИШЕНИ: спуск на то же расстояние к мишени с той же
-        # гистограммой масс и перемешанными бинами портит AAD монотонно (до 2.6987), случайная
-        # мишень тоже; у обоих нулей лучшее -- не двигаться. Значит работает РАСПОЛОЖЕНИЕ массы
-        # в депозите, а не факт смещения.
+        # THE DIRECTION IS CHECKED AGAINST TARGET NULLS: descending the same distance toward a
+        # target with the same mass histogram and shuffled bins degrades the AAD monotonically, to
+        # 2.6987, and so does a random target; under both nulls the best move is not to move. What
+        # works is therefore the LOCATION of the mass in the deposit and not the fact of moving.
         #
-        # ЧЕГО ЭТО ПЛЕЧО НЕ ЗНАЕТ ЗАРАНЕЕ. G4 мерил только ось ФИЗИЧНОСТИ (AAD на IDAC) на
-        # подвыборке в 2875 записей. Ось ЗАДАЧИ (ln x2 MAE) из спуска по логитам недостижима --
-        # она требует обучения, то есть ровно этого прогона. Поэтому ln x2 здесь измеряется
-        # ПЕРВЫЙ раз, и ухудшение задачи -- допустимый исход, который надо прочитать, а не
-        # объявить неудачей.
+        # WHAT THIS ARM DOES NOT KNOW IN ADVANCE. The sweep measured only the PHYSICALITY axis,
+        # the IDAC AAD, on a subsample of 2875 records. The TASK axis, the ln x2 MAE, is not
+        # reachable from a descent over logits: it requires training, which is this run. The ln x2
+        # value is therefore measured here for the first time, and a worse task score is an
+        # admissible outcome to be read rather than declared a failure.
         #
-        # --set обязан идти ПОСЛЕДНИМ: argparse с nargs='*' съедает всё до конца строки.
+        # --set must come LAST: argparse with nargs='*' consumes the rest of the line.
         "${PY}" scripts/train.py --config configs/cosmo_sac.yaml \
           --train-data "${TRAIN}" --val-data "${VAL}" --test-data "${TEST}" \
           --seed "${SEED}" ${DEV_ARGS[@]+"${DEV_ARGS[@]}"} "${CKPT_ARGS[@]}" \
@@ -227,20 +230,20 @@ for SEED in ${SEEDS}; do
           --checkpoint "${ckpt}" --data "${TEST}" --output "${pred}" \
           --model-type tgnn ${DEV_ARGS[@]+"${DEV_ARGS[@]}"} ;;
       grounded_a_detachcrystal)
-        # E2: кристаллическая ветвь ЗАКРЕПЛЕНА СНАРУЖИ -- параметры T_m и dH_fus не получают
-        # градиента из решателя SLE, то есть растворимость больше не может прятать ошибку
-        # активностной ветви в кристаллическом члене. Контроль -- плечо grounded_a, то есть
-        # ровно та же конфигурация без одного флага.
+        # The crystal branch is PINNED EXTERNALLY: the T_m and dH_fus parameters receive no
+        # gradient from the SLE solver, so solubility can no longer hide an error of the activity
+        # branch in the crystal term. The control is the grounded_a arm, the same configuration
+        # without this one flag.
         #
-        # ОСНОВАНИЕ -- ТЕОРЕМА, А НЕ ДОГАДКА. При dCp = 0 член Phi аффинен по 1/T,
-        # активностный класс эту плоскость натягивает, и профилированная информация Фишера по
-        # dH_fus равна НУЛЮ (SI.tex:697). Эмпирически на оценочной поверхности dH_fus измерен
-        # у ОДНОГО растворяемого, T_m у 31 из 147, и ветвь на двух сидах из пяти хуже
-        # константы. Бесплатные ворота пройдены (коммит 8126156): градиентное давление из
-        # потери растворимости на T_m превышает давление кристаллической супервизии в 4.7
-        # раза, то есть замораживать есть что.
+        # THE GROUND IS A THEOREM RATHER THAN A GUESS. At dCp = 0 the term Phi is affine in 1/T,
+        # the activity class spans that plane, and the profiled Fisher information for dH_fus is
+        # ZERO. Empirically, on the evaluation surface dH_fus is measured for ONE solute and T_m
+        # for 31 of 147, and on two seeds of five the branch is worse than a constant. A free
+        # gate was passed before buying the arm: the gradient pressure on T_m from the solubility
+        # loss exceeds that from the crystal supervision by a factor of 4.7, so there is
+        # something to freeze.
         #
-        # --set обязан идти ПОСЛЕДНИМ: argparse с nargs='*' съедает всё до конца строки.
+        # --set must come LAST: argparse with nargs='*' consumes the rest of the line.
         "${PY}" scripts/train.py --config configs/cosmo_sac.yaml \
           --train-data "${TRAIN}" --val-data "${VAL}" --test-data "${TEST}" \
           --seed "${SEED}" ${DEV_ARGS[@]+"${DEV_ARGS[@]}"} "${CKPT_ARGS[@]}" \
@@ -249,28 +252,27 @@ for SEED in ${SEEDS}; do
           --checkpoint "${ckpt}" --data "${TEST}" --output "${pred}" \
           --model-type tgnn ${DEV_ARGS[@]+"${DEV_ARGS[@]}"} ;;
       grounded_a_detachencoder)
-        # КОНТРОЛЬ НА АТРИБУЦИЮ ЦЕНЫ E2. E2 забанковал цену внешнего закрепления кристаллической
-        # ветви (+0.2763 и +0.9275 ln x2 на двух парах против парного пола 0.0744), но приписать
-        # её компенсации НЕ УДАЛОСЬ: заявленная ось delta_phi_mean сменила знак между парами
-        # (+0.8481 против -1.0791, обе за порогом), а разрез по давлению не сосредоточен и точечно
-        # смотрит против компенсации. Остаётся возражение, которое иначе назовёт референт: цена
-        # может быть ценой отрезания ЛЮБОГО кристаллического градиентного пути, а не именно
-        # идентифицируемости.
+        # A CONTROL ON THE ATTRIBUTION OF THAT COST. Pinning the crystal branch externally has a
+        # measured cost, +0.2763 and +0.9275 in ln x2 on two pairs against a paired floor of
+        # 0.0744, but attributing it to compensation did NOT succeed: the declared axis,
+        # delta_phi_mean, changed sign between the pairs, +0.8481 against -1.0791 with both past
+        # the threshold, and the split by pressure is not concentrated and points against
+        # compensation at the margin. The open objection is that the cost may be the cost of
+        # cutting ANY crystal gradient path rather than of identifiability in particular.
         #
-        # ЭТОТ ФЛАГ РЕЖЕТ ДРУГОЕ РЕБРО, и это ИЗМЕРЕНО, а не предположено:
-        # g_sol_for_crystal = g_sol_pre.detach() (model.py:1267) -- кристаллическая голова читает
-        # отцеплённое вложение, то есть её потеря больше не формирует общий энкодер, НО путь
-        # растворимость -> параметры кристалла остаётся ОТКРЫТ. tests/test_e2_detach_encoder_gate.py
-        # прибивает все четыре условия, включая решающее: при этом флаге градиент из ln_x2 в
-        # параметры головы НЕ нуль, тогда как при detach_crystal_params_in_sle он ровно нуль.
-        # Без этого утверждения контроль был бы дубликатом арма записи, и 16 GPU-часов ушли бы на
-        # повторение известного.
+        # THIS FLAG CUTS A DIFFERENT EDGE, and that is MEASURED rather than assumed:
+        # g_sol_for_crystal = g_sol_pre.detach() means the crystal head reads a detached
+        # embedding, so its loss no longer shapes the shared encoder, while the path from
+        # solubility to the crystal parameters stays OPEN. A test pins all four conditions,
+        # including the decisive one: under this flag the gradient from ln_x2 into the head's
+        # parameters is NOT zero, whereas under detach_crystal_params_in_sle it is exactly zero.
+        # Without that statement the control would duplicate the arm of record.
         #
-        # Контроль для сравнения -- УЖЕ ОБУЧЕННОЕ плечо grounded_a сида 42 из того же бандла:
-        # тот же поток (sha 7721b661), тот же сплит, то же расписание, совпадение входов по
-        # sha256 проверено. Поэтому это ОДНО плечо, а не пара.
+        # The comparison control is the ALREADY TRAINED grounded_a arm at seed 42 from the same
+        # bundle: same stream, same split, same schedule, with the inputs checked to agree by
+        # sha256. This is therefore ONE arm and not a pair.
         #
-        # --set обязан идти ПОСЛЕДНИМ: argparse с nargs='*' съедает всё до конца строки.
+        # --set must come LAST: argparse with nargs='*' consumes the rest of the line.
         "${PY}" scripts/train.py --config configs/cosmo_sac.yaml \
           --train-data "${TRAIN}" --val-data "${VAL}" --test-data "${TEST}" \
           --seed "${SEED}" ${DEV_ARGS[@]+"${DEV_ARGS[@]}"} "${CKPT_ARGS[@]}" \
@@ -354,24 +356,18 @@ for SEED in ${SEEDS}; do
           --sigma-oracle --sigma-oracle-side both \
           --sigma-artifact "${SIGMA_ARTIFACT}" ;;
       *)
-        # ИМЯ ПЛЕЧА НЕ СОВПАЛО НИ С ОДНОЙ ВЕТВЬЮ -- ЭТО ОШИБКА, А НЕ ПРОПУСК.
+        # AN ARM NAME MATCHING NO BRANCH IS AN ERROR, NOT A SKIP.
         #
-        # 2026-10-19 отсутствие этой ветви стоило запуска и трёх с половиной часов ожидания.
-        # Плечо grounded_a_detachencoder было добавлено в ЭТОТ файл локально, но ядро Kaggle
-        # копирует код из БАНДЛА (датасет tgnn-solv-e5, снимок от 2026-10-03), где его нет.
-        # case провалился молча, обучение не запускалось (hours 0.0), и упал только агрегатор --
-        # на отсутствующем CSV, то есть в двух шагах от настоящей причины. В логе между строкой
-        # «-- seed=42 arm=...» и агрегатором не было НИЧЕГО, и прочитать это можно было только
-        # заметив пустоту.
-        #
-        # Это тот же класс, что уже дважды стоил ядра: недостача, читаемая как норма.
-        echo "run_e5: НЕИЗВЕСТНОЕ ПЛЕЧО '${arm}'." >&2
-        echo "  Ветви case в этом файле: nrtl directgnn ungrounded grounded_a grounded_b" >&2
+        # A silently missing branch reads as a normal run: the training step never starts and
+        # the first failure appears downstream, on a missing output file, two steps from the
+        # cause. The branch therefore fails loudly and names what to check.
+        echo "run_e5: UNKNOWN ARM '${arm}'." >&2
+        echo "  The case branches in this file: nrtl directgnn ungrounded grounded_a grounded_b" >&2
         echo "  grounded_a_shapefloor grounded_a_detachcrystal grounded_a_detachencoder" >&2
         echo "  grounded_a_truetrain grounded_a_truetrain_residual channel_swap oracle" >&2
-        echo "  ЕСЛИ ПЛЕЧО ЕСТЬ В РЕПОЗИТОРИИ, НО НЕ ЗДЕСЬ -- запущен СТАРЫЙ КОД: ядро Kaggle" >&2
-        echo "  берёт его из бандла, и бандл надо пересобрать" >&2
-        echo "  (scripts/kaggle/build_kaggle_bundle.py) и выложить новой версией датасета." >&2
+        echo "  If the arm exists in the repository but not here, OLD CODE is running: a runner" >&2
+        echo "  that executes a packaged snapshot needs that snapshot rebuilt" >&2
+        echo "  and republished before the new branch is visible to it." >&2
         exit 2 ;;
     esac
 

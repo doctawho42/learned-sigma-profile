@@ -39,7 +39,7 @@ PROFILES = ROOT / "results/sigma_profile_artifact/sigma_profiles.csv"
 TEST = ROOT / "notebooks/data/processed/test.csv"
 OUT = ROOT / "results/donor_window_rescore"
 
-#: Четыре растворителя, чьи площади Sec. 3.3 печатает поимённо.
+#: The four solvents whose areas the results section names individually.
 NAMED = {"C1CCCCC1": "cyclohexane", "CC(C)=O": "acetone",
          "Cc1ccccc1": "toluene", "C1CCOC1": "THF"}
 
@@ -47,20 +47,20 @@ NAMED = {"C1CCCCC1": "cyclohexane", "CC(C)=O": "acetone",
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--arm-glob", default="grounded_a_seed*.pt",
-                    help="какие веса брать; по одному сиду даёт ПОСИДОВОЕ чтение")
+                    help="which weights to use; one seed at a time gives a PER-SEED reading")
     ap.add_argument("--ckpt-dir", type=Path, default=CKPT_DIR,
-                    help="каталог весов; по умолчанию депонированное семейство e5_leakfree")
-    ap.add_argument("--out", type=Path, default=OUT, help="куда писать")
-    ap.add_argument("--top", type=int, default=16, help="сколько рисует фигура")
+                    help="directory of weights; defaults to the deposited e5_leakfree family")
+    ap.add_argument("--out", type=Path, default=OUT, help="where to write the results")
+    ap.add_argument("--top", type=int, default=16, help="how many rows the figure draws")
     args = ap.parse_args()
 
     old = pd.read_csv(RETIRED)
     solvents = [str(s) for s in old["solvent_smiles"]]
-    print(f"растворителей в отозванном депозите: {len(solvents)}")
+    print(f"solvents in the superseded deposit: {len(solvents)}")
 
     cks = sorted(args.ckpt_dir.glob(args.arm_glob))
     if not cks:
-        print(f"нет чекпойнтов в {args.ckpt_dir}")
+        print(f"no checkpoints in {args.ckpt_dir}")
         return 1
 
     _, _, cfg0 = build_model(cks[0])
@@ -79,17 +79,18 @@ def main() -> int:
         else:
             ref_area[s] = float(np.asarray(hit[0])[donor].sum())
     if missing_ref:
-        print(f"  без эталонного профиля: {len(missing_ref)} -> {missing_ref[:4]}")
+        print(f"  without a reference profile: {len(missing_ref)} -> {missing_ref[:4]}")
 
     test = pd.read_csv(TEST, low_memory=False)
-    # НЕ `ln_x2.notna()`: вспомогательные строки (`source=aux_only`, несут has_T_m) лежат в том же
-    # файле с ln_x2 РОВНО 0.0, а не NaN, поэтому notna() их пропускает -- 8103 строки вместо 5608.
-    # has_solubility даёт тот же САМЫЙ набор 5608 строк (проверено поэлементно, не по числу).
+    # NOT `ln_x2.notna()`: the auxiliary rows (`source=aux_only`, carrying has_T_m) sit in the
+    # same file with ln_x2 EXACTLY 0.0 rather than NaN, so notna() admits them and returns 8103
+    # rows instead of 5608. has_solubility selects the SAME 5608 rows, checked element by element
+    # rather than by count.
     if "has_solubility" in test.columns:
         scored = test[test["has_solubility"].astype(bool)]
     else:
         scored = test[test["ln_x2"].notna()]
-    assert not (scored["ln_x2"] == 0.0).all(), "отобраны строки-заполнители, а не измерения"
+    assert not (scored["ln_x2"] == 0.0).all(), "placeholder rows were selected rather than measurements"
     n_rows = scored["solvent_smiles"].astype(str).value_counts()
 
     template = pd.read_csv(TEST, nrows=1, low_memory=False)
@@ -97,7 +98,7 @@ def main() -> int:
     for ck in cks:
         model, ckd, cfg = build_model(ck)
         seed = int(ckd.get("seed", -1))
-        print(f"  сид {seed} ...", flush=True)
+        print(f"  seed {seed} ...", flush=True)
         _, as_solvent = learned_profiles(model, cfg, solvents, template)
         per_seed[seed] = as_solvent
 
@@ -146,20 +147,20 @@ def main() -> int:
     (args.out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2),
                                       encoding="utf8")
 
-    print(f"\n{'растворитель':<16}{'n':>5}{'эталон':>9}{'отозв.':>9}{'запись':>9}{'доля, %':>10}")
+    print(f"\n{'solvent':<16}{'n':>5}{'reference':>11}{'superseded':>12}{'record':>9}{'share, %':>10}")
     for r in top.itertuples():
         print(f"  {r.solvent_smiles:<14}{r.n_rows:>5}{r.reference_donor_window_area:>9.2f}"
               f"{r.retired_learned_donor_window_area:>9.1f}{r.learned_donor_window_area:>9.2f}"
               f"{100*r.learned_donor_fraction:>10.1f}")
     nf, rf = summary["named_fraction_range"], summary["retired_named_fraction_range"]
-    print("\n  доля донорной площади по четырём поимённым:")
-    print(f"    Sec. 3.3 (отозванный):  {100*rf[0]:.0f}-{100*rf[1]:.0f}%")
-    print(f"    плечи записи:           {100*nf[0]:.1f}-{100*nf[1]:.1f}%")
-    print(f"  медиана по всем {len(df)}:   отозв. {100*summary['retired_median_learned_donor_fraction']:.1f}%"
-          f"  ->  запись {100*summary['median_learned_donor_fraction']:.1f}%")
-    print(f"  в топ-{args.top} с ПУСТЫМ эталоном: {summary['empty_reference_count_in_top']} "
-          f"(в подписи к фигуре стоит 12 из 16)")
-    print(f"\nзаписано: {args.out}")
+    print("\n  donor area share for the four named solvents:")
+    print(f"    superseded deposit:     {100*rf[0]:.0f}-{100*rf[1]:.0f}%")
+    print(f"    arms of record:         {100*nf[0]:.1f}-{100*nf[1]:.1f}%")
+    print(f"  median over all {len(df)}:  superseded {100*summary['retired_median_learned_donor_fraction']:.1f}%"
+          f"  ->  record {100*summary['median_learned_donor_fraction']:.1f}%")
+    print(f"  in the top {args.top} with an EMPTY reference: {summary['empty_reference_count_in_top']} "
+          f"(the figure caption states 12 of 16)")
+    print(f"\nwritten: {args.out}")
     return 0
 
 

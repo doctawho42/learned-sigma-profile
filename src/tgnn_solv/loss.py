@@ -91,24 +91,25 @@ def sigma_profile_emd_loss(
     key is present in BOTH branches on purpose, because ``trainer`` symmetrises solute and
     solvent component dicts key-by-key and a missing key would raise there on mixed batches.
 
-    ``shape_bin_weights`` -- вектор длины n_bins, которым взвешиваются ПО-БИНОВЫЕ слагаемые
-    форменного члена. Это не косметика, а смена метрики: взвешенная сумма
-    ``sum_k w_k |C_k(pred) - C_k(target)|`` есть ровно 1-D Вассерштейн по сетке, в которой
-    расстояние между соседними узлами равно ``w_k``, поэтому вес с положительными компонентами
-    оставляет член метрикой, а невзвешенный EMD оказывается частным случаем ``w = const``, то есть
-    предположением, что цена замыкания растёт по сетке равномерно. Измерение этого предположения
-    не подтверждает (``results/per_bin_sensitivity_weights``, ступень на ``cosmo_sac_sigma_hb``),
-    и вектор оттуда берётся как дискретный градиент измеренного потенциала размещения.
+    ``shape_bin_weights`` is a vector of length n_bins weighting the PER-BIN summands of the
+    shape term. It is a change of metric rather than a cosmetic one: the weighted sum
+    ``sum_k w_k |C_k(pred) - C_k(target)|`` is exactly a one-dimensional Wasserstein distance on
+    a grid where adjacent points sit at distance ``w_k``, so a weight with positive components
+    leaves the term a metric, and the unweighted earth-mover distance is the special case
+    ``w = const``, which assumes the closure's cost grows uniformly across the grid. Measurement
+    does not support that assumption: ``results/per_bin_sensitivity_weights`` finds a step at
+    ``cosmo_sac_sigma_hb``, and the vector is the discrete gradient of the measured placement
+    potential.
 
-    ВНИМАНИЕ НА ПОВЕРХНОСТЬ. В режиме ``"emd"`` слагаемое с индексом k оценивает массу,
-    ПЕРЕСЕКАЮЩУЮ границу между бинами k и k+1, а в режиме ``"mse"`` -- массу, ЛЕЖАЩУЮ в бине k.
-    Это две разные поверхности, и один и тот же вектор весов означает в них разное: в ``"emd"``
-    это цена переноса через границу, в ``"mse"`` -- цена размещения. Вектор, выведенный под один
-    режим, в другом стоит не на своей поверхности.
+    MIND THE SURFACE. In ``"emd"`` mode the summand at index k measures the mass CROSSING the
+    boundary between bins k and k+1; in ``"mse"`` mode it measures the mass LYING in bin k. Those
+    are two different surfaces, and the same weight vector means different things on them: in
+    ``"emd"`` it is the cost of moving across a boundary, in ``"mse"`` the cost of placement. A
+    vector derived for one mode sits on the wrong surface in the other.
 
-    ``w = None`` и ``w`` из одних единиц дают БИТОВО тот же член, что и до появления крюка:
-    умножение на ровно 1.0 в IEEE754 точное, а порядок суммирования не меняется. Это
-    зафиксировано тестом, а не предположено.
+    ``w = None`` and a ``w`` of ones give a BIT-IDENTICAL term: multiplication by exactly 1.0 is
+    exact in IEEE754 and the summation order does not change. A test pins this rather than
+    assuming it.
     """
     m = mask.bool()
     if not bool(m.any()):
@@ -127,8 +128,8 @@ def sigma_profile_emd_loss(
     else:
         w = shape_bin_weights
         if w.ndim != 1 or w.shape[0] != per_bin.shape[-1]:
-            # Громко, а не широковещательно: вектор длины 1 или n_rows молча прошёл бы
-            # бродкастом и обучал бы не тот функционал.
+            # Loudly rather than by broadcasting: a vector of length 1 or n_rows would pass
+            # silently and train a different objective.
             raise ValueError(
                 f"shape_bin_weights must be 1-D of length {per_bin.shape[-1]}, "
                 f"got shape {tuple(w.shape)}"
@@ -136,10 +137,11 @@ def sigma_profile_emd_loss(
         shape_loss = (w.to(per_bin) * per_bin).sum(dim=-1).mean()
     shape_raw = shape_loss
     if shape_floor > 0.0:
-        # torch.relu, а НЕ clamp_min(0.0): на самом полу их производные различаются, и это
-        # проверено, а не предположено. clamp_min пропускает градиент при x == 0 (его backward
-        # сравнивает >=), relu даёт ровно нуль (сравнивает > 0). Для "дошёл до глубины и
-        # встал" нужна вторая семантика, иначе ровно на полу супервизия продолжает давить.
+        # torch.relu, NOT clamp_min(0.0): at the floor itself their derivatives differ, and that
+        # is checked rather than assumed. clamp_min passes gradient at x == 0, since its backward
+        # compares with >=, while relu gives exactly zero, comparing with > 0. "Descend to a
+        # depth and stop" needs the second semantics, or the supervision keeps pushing at the
+        # floor.
         shape_loss = torch.relu(shape_loss - shape_floor)
     area_loss = (((pred_area[m] - target_area[m]) / area_scale) ** 2).mean()
     total = shape_weight * shape_loss + area_loss
