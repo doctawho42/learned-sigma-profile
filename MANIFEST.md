@@ -35,13 +35,14 @@ their sources:
 | `fig_cost_map.pdf` | same | `results/per_bin_sensitivity_weights/summary.json` |
 | `fig_attribution.pdf` | same | `results/per_bin_sensitivity_weights/closure_error_attribution.json` |
 | `fig_toc_v2.pdf` | `scripts/analysis/make_toc_figure_v2.py` | `results/sigma_profile_artifact/sigma_profiles.csv` **needs checkpoints** |
+| `fig_pka_hammett.pdf` (Supporting Information) | `scripts/analysis/run_pka_hammett_probe.py` | nothing; the series is semi-synthetic and the script writes its own `results/pka_hammett/probe.json` |
 
 `scripts/analysis/check_figure_spec.py` checks the finished PDFs against the journal's width and
 font limits.
 
 ## Every deposited file
 
-Sixteen files, each read by at least one script above, which `tools/check_inputs_present.py`
+Seventeen files, each read by at least one script above, which `tools/check_inputs_present.py`
 verifies.
 
 | File | What it holds | Where it comes from |
@@ -61,6 +62,7 @@ verifies.
 | `results/idac_learned_vs_reference/summary.json` | activity coefficients from the learned and the substituted profile on the same rows | `scripts/analysis/run_idac_learned_vs_reference.py` |
 | `results/e5_sigma_grounding/section_s1_channel_split.json` | the solubility effect of substitution, split by which component was replaced, per seed | `scripts/analysis/run_paradox_channel_split.py` over the runs of record |
 | `results/donor_window_rescore/per_solvent.csv` | the donor-window rescoring per solvent | `scripts/analysis/run_donor_window_rescore.py` |
+| `results/pka_hammett/probe.json` | the semi-synthetic Hammett sweep behind the Supporting Information figure: the error of the fixed relation given the true constant, and the cost of supplying that constant, at each setting of the two knobs | `scripts/analysis/run_pka_hammett_probe.py`, deterministic from `--seed 0` with no external input |
 | `results/closure_ladder/placebo_profile_diagnosis.csv` | donor-window and total cavity area per solvent, in the reference tabulation and in the learned profile, as medians over that solvent's rows | a deposit step of an earlier closure-damage study. That study's own claim, that the severity of closure damage orders the substitution penalty, did not hold and is not made in this manuscript. This file carries none of it: it is a direct read of the two profile arrays, window by window. |
 
 ## The runs of record
@@ -76,8 +78,8 @@ manifest recording the commit, the configuration, the seed and the environment; 
 
 | Test | What it pins |
 |---|---|
-| `test_manuscript_numbers_bind.py` | every number in the manuscript text against the deposit it is read from |
+| `test_manuscript_numbers_bind.py` | every number in the article text, and the Supporting Information's sweep figures, against the deposit each is read from |
 | `test_t2_gates_bind.py` | the pre-declared reading of the pedestal and substitution measurements |
 | `test_sigma_bin_weights_hook.py` | the per-bin weighting of the σ-profile loss, and the attribution gate |
 | `test_sigma_arm_switches.py` | that the two configuration switches change what they claim to change, and nothing when off |
-| `test_manifest_covers_deposits.py` | that this file names every deposited file |
+| `test_package_is_self_contained.py` | that every module-level import resolves and that this file names every deposited file |

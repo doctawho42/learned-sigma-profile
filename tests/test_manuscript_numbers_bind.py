@@ -38,6 +38,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PAPER = ROOT / "paper"
 RESULTS = (PAPER / "sections/results-v2.tex").read_text(encoding="utf8")
 TABLE = (PAPER / "sections/tab-battery.tex").read_text(encoding="utf8")
+SI = (PAPER / "sections/si-v2.tex").read_text(encoding="utf8")
 
 
 def dep(rel: str) -> dict:
@@ -201,3 +202,37 @@ def test_no_number_is_printed_without_the_control_beside_it():
         assert re.search(r"against|control|placebo|random|untrained|no profile", instrument), (
             f"строка без названного нуля: {instrument.strip()[:80]}"
         )
+
+
+def test_si_pka_sweep_numbers_come_from_the_probe_deposit():
+    """The Supporting Information quotes six numbers off the semi-synthetic sweep.
+
+    They are quoted in the body rather than generated into it, so they are bound here the way
+    the article's are. The crossing is checked as the bracket the five-knot grid resolves, not
+    as an interpolated point, because the sentence claims the bracket.
+    """
+    rec = dep("results/pka_hammett/probe.json")["records"]
+    fid = sorted([r for r in rec if r["sweep"] == "fidelity"], key=lambda r: -r["knob"])
+    ins = sorted([r for r in rec if r["sweep"] == "insufficiency"], key=lambda r: r["knob"])
+
+    m = find(r"from \$-0\.(\d+)\$ where the relation is exact to \$\+0\.(\d+)\$ where it is\s+"
+             r"not, against the relation's own \$0\.(\d+)\$", SI)
+    assert round(-fid[0]["gamma"], 2) == float(f"0.{m.group(1)}")
+    assert round(fid[-1]["gamma"], 2) == float(f"0.{m.group(2)}")
+    assert round(fid[-1]["b_clos_true"], 2) == float(f"0.{m.group(3)}")
+
+    m = find(r"the cost still rises, from \$-0\.(\d+)\$\s+to \$\+0\.(\d+)\$, crossing zero "
+             r"between fractions of \$0\.(\d+)\$ and \$0\.(\d+)\$", SI)
+    assert round(-ins[0]["gamma"], 2) == float(f"0.{m.group(1)}")
+    assert round(ins[-1]["gamma"], 2) == float(f"0.{m.group(2)}")
+
+    lo, hi = float(f"0.{m.group(3)}"), float(f"0.{m.group(4)}")
+    below = [r for r in ins if r["gamma"] < 0]
+    above = [r for r in ins if r["gamma"] > 0]
+    assert below and above, "the cost does not change sign in this sweep"
+    assert max(r["knob"] for r in below) == lo, "the stated lower bracket is not the last knot below zero"
+    assert min(r["knob"] for r in above) == hi, "the stated upper bracket is not the first knot above zero"
+
+    assert all(r["b_clos_true"] == 0.0 for r in ins), (
+        "the Supporting Information says the relation's own error is zero throughout this sweep"
+    )

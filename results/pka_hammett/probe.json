@@ -1,0 +1,182 @@
+{
+  "config": {
+    "n": 6000,
+    "snr": 10.0,
+    "seed": 0,
+    "pka0": 4.2,
+    "rho": 1.0
+  },
+  "records": [
+    {
+      "sweep": "fidelity",
+      "knob": 1.0,
+      "r_orc": 0.02396659383355842,
+      "r_free": 0.05465212438200173,
+      "gamma": -0.03068553054844331,
+      "b_clos_true": 0.0,
+      "b_insuff_true": 0.024435636633055553,
+      "b_clos_est": 0.0009712367671550207,
+      "b_insuff_est": 0.02520698101470516,
+      "b_clos_jensen_lb": 1.0118945242101053e-08,
+      "b_insuff_lotv_ub": 0.03376048492413895
+    },
+    {
+      "sweep": "fidelity",
+      "knob": 0.85,
+      "r_orc": 0.040932356724189545,
+      "r_free": 0.05466328190078455,
+      "gamma": -0.013730925176595007,
+      "b_clos_true": 0.018225000000000012,
+      "b_insuff_true": 0.023801755412222216,
+      "b_clos_est": 0.01818168016134537,
+      "b_insuff_est": 0.024491291373975887,
+      "b_clos_jensen_lb": 7.19490871119541e-06,
+      "b_insuff_lotv_ub": 0.03242833022633511
+    },
+    {
+      "sweep": "fidelity",
+      "knob": 0.7,
+      "r_orc": 0.09855930516706571,
+      "r_free": 0.059265747801396665,
+      "gamma": 0.03929355736566904,
+      "b_clos_true": 0.07290000000000002,
+      "b_insuff_true": 0.025084211066388893,
+      "b_clos_est": 0.07396761008909268,
+      "b_insuff_est": 0.02625649464081666,
+      "b_clos_jensen_lb": 2.222062493777273e-05,
+      "b_insuff_lotv_ub": 0.03791950978348268
+    },
+    {
+      "sweep": "fidelity",
+      "knob": 0.5,
+      "r_orc": 0.2298911030392364,
+      "r_free": 0.07508183825691762,
+      "gamma": 0.15480926478231877,
+      "b_clos_true": 0.2025,
+      "b_insuff_true": 0.024731226555555555,
+      "b_clos_est": 0.20609491318412745,
+      "b_insuff_est": 0.025499138767736792,
+      "b_clos_jensen_lb": 5.619784779795092e-06,
+      "b_insuff_lotv_ub": 0.051597433944453645
+    },
+    {
+      "sweep": "fidelity",
+      "knob": 0.3,
+      "r_orc": 0.42330680237717494,
+      "r_free": 0.10938852866919758,
+      "gamma": 0.31391827370797737,
+      "b_clos_true": 0.39690000000000003,
+      "b_insuff_true": 0.02432736739972222,
+      "b_clos_est": 0.3974556930655354,
+      "b_insuff_est": 0.026779703204945094,
+      "b_clos_jensen_lb": 5.506505737238898e-06,
+      "b_insuff_lotv_ub": 0.06690207330195297
+    },
+    {
+      "sweep": "fidelity",
+      "knob": 0.0,
+      "r_orc": 0.8347142364870815,
+      "r_free": 0.14171815970677026,
+      "gamma": 0.6929960767803113,
+      "b_clos_true": 0.81,
+      "b_insuff_true": 0.024850827145555556,
+      "b_clos_est": 0.8064173185226088,
+      "b_insuff_est": 0.026845046992459383,
+      "b_clos_jensen_lb": 1.2876981231897585e-06,
+      "b_insuff_lotv_ub": 0.12481905170466931
+    },
+    {
+      "sweep": "insufficiency",
+      "knob": 0.0,
+      "r_orc": 0.025179694536549828,
+      "r_free": 0.06000374106570889,
+      "gamma": -0.03482404652915906,
+      "b_clos_true": 0.0,
+      "b_insuff_true": 0.024687138345555557,
+      "b_clos_est": 0.0009245056611526042,
+      "b_insuff_est": 0.026325059727244214,
+      "b_clos_jensen_lb": 1.9627931746397182e-07,
+      "b_insuff_lotv_ub": 0.03649125984660452
+    },
+    {
+      "sweep": "insufficiency",
+      "knob": 0.15,
+      "r_orc": 0.04312067953109811,
+      "r_free": 0.06537688056816214,
+      "gamma": -0.02225620103706403,
+      "b_clos_true": 0.0,
+      "b_insuff_true": 0.04264226270666666,
+      "b_clos_est": 0.0015770375846094523,
+      "b_insuff_est": 0.04473669740272036,
+      "b_clos_jensen_lb": 1.026701040681963e-06,
+      "b_insuff_lotv_ub": 0.05220178564726308
+    },
+    {
+      "sweep": "insufficiency",
+      "knob": 0.3,
+      "r_orc": 0.0993764963349532,
+      "r_free": 0.0779655882191417,
+      "gamma": 0.021410908115811506,
+      "b_clos_true": 0.0,
+      "b_insuff_true": 0.09748232260416666,
+      "b_clos_est": 0.004208847424311307,
+      "b_insuff_est": 0.10314082689717535,
+      "b_clos_jensen_lb": 1.2802983643869663e-05,
+      "b_insuff_lotv_ub": 0.10840966033372426
+    },
+    {
+      "sweep": "insufficiency",
+      "knob": 0.5,
+      "r_orc": 0.22782428751134193,
+      "r_free": 0.08439339668933107,
+      "gamma": 0.14343089082201085,
+      "b_clos_true": 0.0,
+      "b_insuff_true": 0.22765395478638892,
+      "b_clos_est": 0.010263367792400833,
+      "b_insuff_est": 0.23653680388294238,
+      "b_clos_jensen_lb": 3.144488482827325e-07,
+      "b_insuff_lotv_ub": 0.2403215172320423
+    },
+    {
+      "sweep": "insufficiency",
+      "knob": 0.7,
+      "r_orc": 0.42757180830818403,
+      "r_free": 0.08418079680080187,
+      "gamma": 0.34339101150738216,
+      "b_clos_true": 0.0,
+      "b_insuff_true": 0.4210229927197223,
+      "b_clos_est": 0.018599530103629615,
+      "b_insuff_est": 0.44316356800482937,
+      "b_clos_jensen_lb": 8.459099889436537e-09,
+      "b_insuff_lotv_ub": 0.436775084561319
+    }
+  ],
+  "rdkit_oracle_demo": {
+    "available": true,
+    "rdkit_parsed": {
+      "benzoic acid": {
+        "valid": true,
+        "canonical": "O=C(O)c1ccccc1"
+      },
+      "p-nitrobenzoic acid": {
+        "valid": true,
+        "canonical": "O=C(O)c1ccc([N+](=O)[O-])cc1"
+      },
+      "p-methoxybenzoic acid": {
+        "valid": true,
+        "canonical": "COc1ccc(C(=O)O)cc1"
+      },
+      "p-aminobenzoic acid": {
+        "valid": true,
+        "canonical": "Nc1ccc(C(=O)O)cc1"
+      }
+    },
+    "note": "SMILES parse OK; production substituent->sigma parser (RGroupDecomposition on the benzoic-acid scaffold + fragment matching) is Phase-3 data-pipeline work.",
+    "sigma_table_size": 25
+  },
+  "figures": [
+    "paper/figs/fig_pka_hammett.pdf",
+    "paper/figs/fig_pka_hammett.png"
+  ],
+  "note": "Phase-3 local scaffolding; real pKa labels + shared GNN encoder are Modal-gated."
+}

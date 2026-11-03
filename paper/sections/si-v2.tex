@@ -387,6 +387,33 @@ substituent, or one outside the tabulated list, lies where it is not; both enter
 as zero. The rule is a function of structure and never reads a residual, so the strata cannot be
 chosen by outcome.
 
+
+\paragraph{The same distinction, dialled continuously.}
+Before the comparison on measured data, the two failure modes can be separated by construction.
+Figure~\ref{fig:si-pka} dials each of them on a semi-synthetic Hammett series whose true values are
+known in closed form, so that the cost of supplying the reference can be read against a quantity
+that is not estimated. Degrading the relation while the constant stays sufficient makes the cost
+follow the relation's own error, from $-0.03$ where the relation is exact to $+0.69$ where it is
+not, against the relation's own $0.81$. Keeping the relation exact and starving the constant
+instead leaves the relation's own error at zero throughout, and the cost still rises, from $-0.03$
+to $+0.34$, crossing zero between fractions of $0.15$ and $0.30$. Supplying the reference is therefore costly
+for two separable reasons, and only one of them is a defect of the map.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig_pka_hammett.pdf}
+\caption{The two failure modes dialled directly, on a semi-synthetic Hammett series whose true
+values are known in closed form. The cost of supplying the reference is the squared error obtained
+with the tabulated constant minus that of the best free fit, so a positive value means supplying
+the reference makes the prediction worse. (a) The relation is degraded while the constant stays
+sufficient; adequacy $F$ falls from left to right. The cost tracks the relation's own error and
+changes sign where the relation becomes adequate. (b) The relation is kept exact while a growing
+fraction of records carries an effect the tabulated constant cannot describe. The relation's own
+error is zero throughout and the cost still rises, so a cost of supplying the reference is not by
+itself evidence that the relation is wrong.}
+\label{fig:si-pka}
+\end{figure*}
+
 \paragraph{Data and one uniform filter.}
 The source is the OPERA compilation \cite{mansouri2019opera}, $7904$ records. A small number are
 supplied as pre-ionized microstates, inconsistent with a neutral-scaffold Hammett assignment, and
