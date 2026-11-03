@@ -1,0 +1,117 @@
+{
+  "activity_class_comparison": {
+    "free_activity_slope_b": {
+      "cond": 234911.42420532933,
+      "crlb_sd_dH_fus_Jmol": 19895.014243106605
+    },
+    "known_activity_slope_b": {
+      "cond": 527.1934948839806,
+      "crlb_sd_dH_fus_Jmol": 8250.810148925877
+    }
+  },
+  "base_regimes": {
+    "plus_Tm": {
+      "cond": 5439.277126419125,
+      "crlb_sd_dH_fus_Jmol": 3150.848026646608,
+      "eigenvalues": [
+        2.322400596286345,
+        58.13200489814747,
+        91.29111800981872,
+        12632.180441762453
+      ],
+      "lambda_max": 12632.180441762453,
+      "lambda_min": 2.322400596286345
+    },
+    "plus_Tm_dH": {
+      "cond": 1571.7941063296146,
+      "crlb_sd_dH_fus_Jmol": 1688.5561870458,
+      "eigenvalues": [
+        8.036797332127943,
+        58.19984417853969,
+        91.74864335176012,
+        12632.19068040427
+      ],
+      "lambda_max": 12632.19068040427,
+      "lambda_min": 8.036797332127943
+    },
+    "solubility_only": {
+      "cond": 234911.42420532933,
+      "crlb_sd_dH_fus_Jmol": 19895.014243106605,
+      "eigenvalues": [
+        0.053773592379500045,
+        41.13625399750594,
+        85.70476717161438,
+        12632.031170505199
+      ],
+      "lambda_max": 12632.031170505199,
+      "lambda_min": 0.053773592379500045
+    }
+  },
+  "config": {
+    "T_min": 280.0,
+    "delta_T": 40.0,
+    "n_points": 9,
+    "param_scales": {
+      "T_m": 50.0,
+      "dH_fus": 5000.0,
+      "gamma_a": 1.0,
+      "gamma_b": 300.0
+    },
+    "sigma_Tm": 10.0,
+    "sigma_dH": 2000.0,
+    "sigma_lnx2": 0.3,
+    "theta_true": {
+      "T_m": 400.0,
+      "dH_fus": 25000.0,
+      "gamma_a": 1.0,
+      "gamma_b": 200.0
+    }
+  },
+  "delta_T_sweep": [
+    {
+      "cond_plus_Tm": 808852691178.4135,
+      "cond_plus_Tm_dH": 6133.618757659153,
+      "cond_solubility_only": 1.899501445088492e+16,
+      "crlb_sd_dH_plus_Tm_dH_Jmol": 1999.9999948119037,
+      "crlb_sd_dH_solubility_only_Jmol": 8006459.890822835,
+      "delta_T": 10.0
+    },
+    {
+      "cond_plus_Tm": 279774.1614049804,
+      "cond_plus_Tm_dH": 2799.428482342651,
+      "cond_solubility_only": 6549115634.225915,
+      "crlb_sd_dH_plus_Tm_dH_Jmol": 1991.002994843471,
+      "crlb_sd_dH_solubility_only_Jmol": 3230596.8482363736,
+      "delta_T": 20.0
+    },
+    {
+      "cond_plus_Tm": 5439.277126419125,
+      "cond_plus_Tm_dH": 1571.7941063296146,
+      "cond_solubility_only": 234911.42420532933,
+      "crlb_sd_dH_plus_Tm_dH_Jmol": 1688.5561870458,
+      "crlb_sd_dH_solubility_only_Jmol": 19895.014243106605,
+      "delta_T": 40.0
+    },
+    {
+      "cond_plus_Tm": 4997.111888534999,
+      "cond_plus_Tm_dH": 2354.272105150606,
+      "cond_solubility_only": 5628.989343279081,
+      "crlb_sd_dH_plus_Tm_dH_Jmol": 1454.857640535229,
+      "crlb_sd_dH_solubility_only_Jmol": 2249.3018833122396,
+      "delta_T": 80.0
+    },
+    {
+      "cond_plus_Tm": 1686.6976668260268,
+      "cond_plus_Tm_dH": 1169.235965119522,
+      "cond_solubility_only": 1707.7876971412513,
+      "crlb_sd_dH_plus_Tm_dH_Jmol": 1112.5968691044197,
+      "crlb_sd_dH_solubility_only_Jmol": 1347.5943615636804,
+      "delta_T": 120.0
+    }
+  ],
+  "interpretation": {
+    "T1": "solubility_only Fisher is rank-deficient (lambda_min ~ 0, cond huge): the crystal enthalpy is collinear with the activity 1/T slope.",
+    "T1_closure": "adding a direct dH_fus label (plus_Tm_dH) collapses cond and makes the CRLB on dH_fus finite -- a melting point alone (plus_Tm) does not.",
+    "T2": "without a free activity 1/T term (gamma_b=0) dH_fus becomes identifiable from solubility alone -- the bound is class-dependent, not universal."
+  }
+}

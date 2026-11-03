@@ -1,0 +1,27 @@
+# DirectGNN configuration with tuned proxy hyperparameters
+# from the 20-trial scaffold proxy search (best val MAE 2.3193).
+
+model:
+  hidden_dim: 128
+  n_gnn_layers: 4
+  encoder_role_mode: "shared_residual"
+  encoder_role_specific_layers: 2
+  n_cross_attn_layers: 3
+  pair_dim: 512
+  interaction_mode: "cross_attn"
+  dropout: 0.17410772492930618
+  use_solvent_moe: true
+  use_temperature_in_encoder: false
+  use_temperature_in_interaction: false
+  use_temperature_in_nrtl_head: true
+
+training:
+  epochs_phase2: 200
+  batch_size: 64
+  use_pair_temperature_batching: true
+  pair_temperature_min_group_size: 2
+  pair_temperature_group_chunk_size: 4
+  lr_phase2: 0.0008555952685634822
+  direct_weight_decay: 4.178742338819323e-05
+  patience: 30
+  grad_clip: 2.544212750214583
